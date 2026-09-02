@@ -528,6 +528,9 @@ export function validateMatchPlan(
   const preservedAssignments = state.committedAssignments.filter(
     (assignment) => !targetNeedIds.has(assignment.needId),
   )
+  const replacedAssignments = state.committedAssignments.filter((assignment) =>
+    targetNeedIds.has(assignment.needId),
+  )
   const projectedAssignments = [...preservedAssignments, ...assignments]
   const uncoveredNeeds = state.needs.flatMap((need) => {
     const coveredQuantity = projectedAssignments
@@ -588,6 +591,8 @@ export function validateMatchPlan(
       uniqueResources: resourceIds.size,
       totalTravelKm: totalTravelKmRounded,
       estimatedVolunteerHours,
+      preservedAssignments: preservedAssignments.length,
+      replacedAssignments: replacedAssignments.length,
     },
     summary: {
       assignmentCount: assignments.length,

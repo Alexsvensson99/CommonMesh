@@ -50,6 +50,8 @@ describe('coordination constraints', () => {
       needsTargeted: 7,
       uniqueResources: 8,
       estimatedVolunteerHours: 8,
+      preservedAssignments: 0,
+      replacedAssignments: 0,
     })
   })
 
@@ -168,5 +170,35 @@ describe('coordination constraints', () => {
       snapshot.needs.find((need) => need.id === 'need-van')?.status,
     ).toBe('disrupted')
     expect(snapshot.totals.disrupted).toBe(1)
+  })
+
+  it('reports the exact preserved and replaced assignment counts for repair plans', () => {
+    const state = createSeedState()
+    const initial = buildRecommendedAssignments(state)
+    state.committedAssignments = initial.map((item) => ({
+      ...item,
+      planId: 'CM-INITIAL',
+      committedAt: '2026-09-05T08:00:00+02:00',
+    }))
+    state.resources = state.resources.map((resource) =>
+      resource.id === 'res-northside-van'
+        ? {
+            ...resource,
+            availability: { ...resource.availability, status: 'unavailable' },
+          }
+        : resource,
+    )
+
+    const validation = validateMatchPlan(
+      state,
+      buildRecommendedAssignments(state),
+    )
+
+    expect(validation.metrics).toMatchObject({
+      assignmentCount: 1,
+      preservedAssignments: 7,
+      replacedAssignments: 1,
+    })
+    expect(validation.coverage.percentage).toBe(100)
   })
 })

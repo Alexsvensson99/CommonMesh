@@ -1,109 +1,141 @@
 # CommonMesh
 
-> An agent-native coordination workspace where people and AI agents match community needs with available skills, equipment, transport, food, and spaces.
+CommonMesh turns complex community coordination into a transparent, human-approved agent workflow.
 
-CommonMesh is a new open-source project built for the **2026 WebMCP Challenge**. It demonstrates a complete human-agent workflow over shared browser state: discover, compare, validate, stage, approve, commit, detect a resource failure, and repair only the affected assignments.
+**Built for the 2026 WebMCP Challenge.**
 
-The application is intentionally not a chatbot. CommonMesh owns the data, rules, state, and actions. A WebMCP-enabled browser agent supplies the reasoning and interacts through structured tools registered directly on `document.modelContext`.
+CommonMesh is a React application where a browser agent can discover community needs, compare constrained resources, validate a complete match plan, stage it for review, and—only after explicit human approval—commit the exact approved proposal. The product is not a chatbot: CommonMesh owns the state, rules, tools, approval gate, and visible audit trail.
 
-## Why this is a strong WebMCP use case
+## Screenshots
 
-Community coordination is a constraint problem, not a form-filling problem. A useful solution may need to combine several resources while respecting:
+Competition screenshots will be added here after the final hosted demo is captured.
 
-- availability and overlapping time windows;
-- quantities and capacity;
-- required skills or licences;
-- maximum volunteer hours;
-- travel distance;
-- existing commitments; and
-- explicit human authority over real-world commitments.
+Suggested captures:
 
-Screen scraping or DOM automation forces an agent to infer all of this from presentation. CommonMesh exposes the underlying capabilities and identifiers as strict, self-describing WebMCP tools. The human still sees every staged change in the same UI and owns the one action the agent cannot perform: approval.
+- the Saturday Community Day overview and coordination metrics;
+- an Agent Proposed Plan before approval;
+- the PROPOSED → APPROVED → COMMITTED lifecycle;
+- the isolated van-failure warning and one-assignment repair; and
+- the WebMCP Tools catalogue and Human + Agent Activity trail.
+
+## Why CommonMesh?
+
+Community events often have enough goodwill but too little coordination capacity. A single event can depend on people, equipment, transport, food, and accessible spaces, each with different quantities, skills, schedules, travel limits, and existing commitments.
+
+CommonMesh demonstrates a focused answer: let an agent do the comparison work while the human retains authority over real-world commitments. The deterministic **Saturday Community Day** workspace includes seven needs and fifteen resources with deliberate alternatives and failure cases, making the behavior repeatable for every judge.
+
+## Why WebMCP?
+
+This workflow depends on structured domain state, not pixels. WebMCP gives the browser agent named capabilities, strict inputs, stable identifiers, and structured results. The agent can ask for the exact coordination snapshot, search by constraints, validate a plan, and stage or commit through the same business logic used by the human interface.
+
+That is more reliable and meaningful than DOM clicking or screenshot automation because:
+
+- tool names state intent instead of making the agent infer controls from layout;
+- JSON Schemas make required identifiers, quantities, and time windows explicit;
+- validation returns stable error codes and corrective next actions;
+- UI redesigns do not break the agent contract;
+- the agent receives the domain state directly instead of estimating it from visible text;
+- write operations update the same visible store and audit trail as human actions; and
+- CommonMesh can enforce authorization and stale-state checks below the presentation layer.
+
+Chrome's WebMCP guidance similarly emphasizes clear tool strategy, semantic definitions, strict runtime validation, reliable state updates, and meaningful failures.
+
+## How Human + Agent Collaboration Works
+
+1. A human gives the agent a coordination goal.
+2. The agent reads the live workspace through WebMCP.
+3. The agent searches needs and compatible resources.
+4. The agent validates a complete or targeted repair plan.
+5. The agent stages the proposal in the shared UI.
+6. CommonMesh shows assignments, constraints, warnings, efficiency metrics, coverage, revision, and a SHA-256 plan digest.
+7. The human approves that exact digest in the UI.
+8. The agent may then commit the approved digest.
+9. CommonMesh rejects missing approval, changed digests, stale revisions, invalid plans, and replay.
+10. Every successful or blocked action appears in the Human + Agent Activity trail.
+
+The lifecycle is intentionally explicit:
 
 ```text
-Human UI ───────┐
-                ├── shared CoordinationStore ── validation + audit log
-WebMCP tools ───┘                 │
-                                  └── browser localStorage
+PROPOSED → APPROVED → COMMITTED
+           human       agent
 ```
 
-Both interaction paths invoke the same domain functions. There is no hidden agent-only state and no second implementation to drift out of sync.
+Approval and execution are separate states. **Agents can propose changes. Only you can approve execution.**
 
-## Saturday Community Day demo
+## Demo Scenario
 
-The deterministic workspace is named **Saturday Community Day** and contains seven needs:
+**Saturday Community Day** at Riverlight Hall in Gothenburg needs:
 
 - 20 folding chairs;
 - one cargo van;
-- two event volunteers, each limited to a three-hour shift;
-- one separately assigned person with a B driving licence;
+- two event volunteers;
+- one separately assigned licensed van driver;
 - 40 vegetarian lunch portions;
 - a projector and screen; and
 - a nearby step-free consultation room.
 
-Fifteen seeded resources offer multiple possible matches with deliberately different constraints. The set includes two valid vans, multiple licensed drivers, an undersized vehicle, a schedule-conflicted volunteer, a too-distant driver, a skill-incompatible projector, and alternative chair and volunteer combinations. The deterministic recommendation is the lowest-friction complete plan. No external API, account, database, or network connection is required, so every judge starts from the same scenario.
+The fifteen resources include valid alternatives plus deliberate constraints: two vans, an undersized trailer, a schedule-conflicted volunteer, a too-distant driver, a projector without the required capability, and multiple viable chair and volunteer combinations.
 
-## WebMCP tool catalogue
+The deterministic recommendation produces eight assignments covering all seven needs. After the primary van becomes unavailable, exactly one committed assignment is affected. A repair plan preserves the other seven assignments and replaces only the van match.
 
-CommonMesh registers 11 tools with the current imperative API:
+## Architecture
 
-```ts
-await document.modelContext.registerTool(tool, { signal })
+```text
+Human React UI ──────┐
+                     ├── CoordinationStore ── domain validation
+WebMCP tool layer ───┘          │              approval + audit rules
+                                └── browser localStorage
 ```
 
-| Tool | Purpose | State effect |
+- **UI:** React 19 and Lucide icons.
+- **Domain:** typed needs, resources, assignments, constraints, staged plans, approvals, and activity outcomes.
+- **State:** one reactive store shared by human actions and WebMCP tools.
+- **Persistence:** versioned browser `localStorage` with a deterministic reset state.
+- **Trust binding:** native Web Crypto SHA-256 digest over normalized assignments and the source revision.
+- **Agent interface:** the current imperative `document.modelContext.registerTool(...)` API with AbortSignal lifecycle cleanup.
+- **Quality:** TypeScript 6, Vitest, Oxlint, and Vite 8.
+
+There is no hidden agent-only state and no duplicate agent implementation. Both surfaces invoke the same store and validation functions.
+
+## WebMCP Tools
+
+CommonMesh registers eleven tools:
+
+| Tool | Purpose | Access |
 | --- | --- | --- |
-| `get_coordination_snapshot` | Read the event, open needs, current assignments, resource summary, staged state, and coverage | Read only |
-| `search_needs` | Filter needs by query, status, category, date, and urgency | Read only; returns untrusted listing text |
-| `search_resources` | Filter by type, skill, availability, capacity, distance, date/time, or need compatibility | Read only; returns untrusted listing text |
-| `get_resource_details` | Inspect one resource, its constraints, and commitments | Read only; returns untrusted listing text |
-| `validate_match_plan` | Dry-run assignments and return errors, warnings, uncovered needs, conflicts, constraint violations, coverage, and metrics | Read only |
-| `stage_match_plan` | Validate, hash, and display a plan for human review | Stages only; never commits |
-| `get_staged_plan` | Read the plan, exact digest, validation, approval status, creation time, and revision | Read only |
-| `commit_approved_plan` | Commit only an exact human-approved digest | Mutating and approval-gated |
-| `get_activity_log` | Read the visible human-agent audit trail | Read only |
-| `set_resource_availability` | Change a demo resource and trigger disruption detection | Mutating |
-| `undo_last_commit` | Restore the exact assignment state from before the last commit | Mutating and reversible |
+| `get_coordination_snapshot` | Read event state, coverage, revisions, need statuses, assignments, and staged-plan state | Read |
+| `search_needs` | Filter needs by query, category, urgency, date, and live status | Read |
+| `search_resources` | Find resources by capability, distance, capacity, availability, time, or need compatibility | Read |
+| `get_resource_details` | Inspect one resource, its constraints, and current commitments | Read |
+| `validate_match_plan` | Dry-run assignments against every domain rule | Read |
+| `stage_match_plan` | Validate, hash, and display a proposal for human review | Write: staging only |
+| `get_staged_plan` | Read the exact proposal, digest, revision, validation, and approval state | Read |
+| `commit_approved_plan` | Commit only the exact human-approved digest | Write: approval-gated |
+| `get_activity_log` | Read the visible human, agent, and system audit trail | Read |
+| `set_resource_availability` | Change a demo resource and trigger disruption detection | Write: reversible demo state |
+| `undo_last_commit` | Restore the exact assignment state before the latest commit | Write: reversible |
 
-Every input uses a strict JSON Schema with `additionalProperties: false`. Every execution path also performs runtime validation and returns structured success or error objects with stable codes and a useful next action.
+Every input schema sets `additionalProperties: false`. Runtime parsing and domain validation remain authoritative because schema hints alone do not enforce business rules.
 
-Read tools carry `readOnlyHint: true`. Tools that return community-authored descriptions also carry `untrustedContentHint: true`, making the trust boundary explicit to the agent.
+Read tools use `readOnlyHint`. Tools returning community-authored text use `untrustedContentHint`. CommonMesh exposes no WebMCP approval tool.
 
-## Human approval and security model
+## Trust & Safety Model
 
-The approval gate is part of the domain model, not a disabled button:
+- Plans are normalized and validated before staging.
+- The approval digest binds the exact assignments to the current coordination revision.
+- Only the visible human UI can create an approval record.
+- Staging a changed plan removes any previous approval.
+- Changing resource state invalidates a pending approval and makes the proposal stale.
+- Commit revalidates the complete plan immediately before mutation.
+- An unapproved, stale, mismatched, invalid, consumed, or superseded operation returns a structured error and appears as blocked activity.
+- Repair plans replace assignments only for targeted needs; unaffected commitments are preserved.
+- Community-authored descriptions are explicitly labelled untrusted for agents.
+- Tool registration is same-origin by default and bound to the React lifecycle.
+- Demo reset restores seeded resources, clears plans and approvals, removes assignments, and persists the clean state.
 
-1. `stage_match_plan` validates and normalizes every assignment.
-2. CommonMesh generates a deterministic SHA-256 digest from the normalized plan and current coordination revision.
-3. The visible UI shows that exact plan and digest.
-4. Approval is available only in the human UI; no WebMCP approval tool exists.
-5. A human may reject the visible plan without changing any assignments.
-6. The approval record is bound to that exact digest; staging any changed plan removes it.
-7. `commit_approved_plan` rejects missing approval, a changed digest, stale state, an invalid plan, or replay of a consumed plan.
-8. The audit trail records the attempt and outcome.
-9. The latest commit is reversible with `undo_last_commit`.
+This client-side competition demo proves the interaction and authorization model inside one browser session. It is not a production identity or multi-user authorization system; those require a server-side trust boundary.
 
-Additional safeguards:
-
-- Resource changes increment a revision, automatically making earlier staged plans stale.
-- A repair plan replaces assignments only for the needs it targets; unaffected commitments are preserved.
-- Community listing descriptions are treated as untrusted data, never executable instructions.
-- The demo stores no credentials or personal data and makes no third-party requests.
-- WebMCP tools are lifecycle-bound with `AbortSignal` cleanup when the React surface unmounts.
-
-## Technology stack
-
-- React 19
-- TypeScript 6
-- Vite 8
-- Vitest
-- Oxlint
-- Lucide React icons
-- Native Web Crypto for SHA-256 plan digests
-- Native `document.modelContext.registerTool(...)` WebMCP integration
-- Browser-local persistence through `localStorage`
-
-## Run locally
+## Running Locally
 
 Requirements: Node.js 20.19+ or 22.12+ and npm.
 
@@ -112,113 +144,55 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. State persists in the browser until you use the reset control in the top bar.
+Open the local URL printed by Vite. CommonMesh remains fully usable in an ordinary browser. WebMCP tools require ChatGPT's in-app browser or a compatible Chrome build.
 
-### Production build
+For a production preview:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-The deployable static application is written to `dist/`.
+## Testing
 
-### Verification commands
+Run the complete local quality gate:
 
 ```bash
-npm test
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
 
-The deterministic suite covers resource search, valid and invalid plans, availability, overlapping schedules, skill requirements, capacity, travel distance, maximum volunteer hours, staging, rejection, exact-digest approval, an unapproved commit, stale state, successful commit, approval consumption, selective repair, undo, reset, and all WebMCP registrations.
+The suite covers search, compatibility signals, capacity, skills, time windows, distance, maximum hours, overbooking, deterministic digests, staging, rejection, exact-digest approval, blocked commits, stale-state invalidation, approval consumption, selective repair, repair impact metrics, undo, persisted reset behavior, and all WebMCP registrations.
 
-## WebMCP compatibility assumptions
+## Demo Script
 
-CommonMesh uses the current imperative API documented by Chrome as of 20 August 2026:
+1. Reset Demo and point out the clean state: 7 needs, 15 available resources, 0% coverage.
+2. Open **WebMCP Tools** to show the eleven live read/write capabilities and the absence of an approval tool.
+3. Give the browser agent the provided mission prompt.
+4. Let the agent inspect, search, validate, and stage the complete plan.
+5. Point out **Agent Proposed Plan**, 100% projected coverage, constraint status, efficiency metrics, and the PROPOSED lifecycle step.
+6. Ask the agent to commit before approval. Show the structured `APPROVAL_REQUIRED` result and blocked activity.
+7. Click **Approve Plan**. Emphasize that the state is APPROVED, not COMMITTED.
+8. Ask the agent to commit the exact digest. Confirm 100% live coverage and COMMITTED state.
+9. Click **Mark primary van unavailable**. Confirm that one assignment requires attention and seven remain active.
+10. Ask the agent to repair only the affected need. Show **7 existing assignments preserved** and **1 assignment replaced**.
+11. Approve and commit the repair. Confirm full coverage and review the complete Human + Agent Activity trail.
+12. Reset again to prove the demo is repeatable.
 
-```ts
-await document.modelContext.registerTool(tool, { signal })
-```
+## Judging Checklist
 
-- Registration is tied to an `AbortSignal`, which unregisters all tools when the React surface unmounts.
-- Tool inputs use JSON Schema and business rules are revalidated at execution time.
-- `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `untrustedContentHint` are advisory annotations for agents; CommonMesh enforces authorization and constraints in its own service layer.
-- CommonMesh deliberately does not depend on the experimental React helper package and does not assume the draft `requestUserInteraction()` API is available.
-- WebMCP remains experimental. The page detects `document.modelContext` honestly and leaves the human UI operational when it is absent.
-
-## Judge testing instructions
-
-Use either:
-
-- ChatGPT's in-app browser, which supports WebMCP; or
-- Google Chrome 149 or later with `chrome://flags/#enable-webmcp-testing` enabled, followed by a browser restart.
-
-After opening CommonMesh, the status pill in the top bar should read **WebMCP live · 11 tools**.
-
-Give the browser agent this prompt:
-
-> Inspect the coordination snapshot. Cover every open need for Saturday Community Day using resources within 10 km. Respect availability, quantities, skills, time windows, and maximum hours. Validate the complete plan and stage it for my review. Do not commit anything until I approve the exact plan in CommonMesh.
-
-The page should visibly update as the agent calls read tools, validates assignments, and stages a plan. Ask the agent to commit before clicking approval: it must receive `APPROVAL_REQUIRED`. Review the visible plan, click **Approve Plan**, then ask the agent to commit that digest.
-
-To inspect the API directly from a WebMCP-enabled browser console:
-
-```js
-const tools = await document.modelContext.getTools()
-tools.map(({ name, description }) => ({ name, description }))
-```
-
-## Exact end-to-end demo workflow
-
-1. The human opens CommonMesh.
-2. The agent calls `get_coordination_snapshot`.
-3. The agent searches open needs.
-4. The agent searches available resources.
-5. The agent builds a proposed solution.
-6. The agent calls `validate_match_plan`.
-7. The agent calls `stage_match_plan`.
-8. The proposal appears immediately in the shared UI.
-9. The agent attempts to commit and receives `APPROVAL_REQUIRED`.
-10. The human reviews the visible assignments, constraints, metrics, full SHA-256 digest, and clicks **Approve Plan**.
-11. The agent calls `commit_approved_plan` with that exact digest.
-12. Eight assignments become committed and all seven needs show covered.
-13. The human clicks **Mark primary van unavailable**.
-14. Only the van assignment is flagged affected; the other seven assignments stay intact.
-15. The agent inspects the changed snapshot.
-16. The agent finds the Harbour backup van.
-17. The agent stages a one-assignment repair while the store preserves unaffected assignments.
-18. The human approves the repair digest.
-19. The agent commits the repair.
-20. The UI returns to full coverage and the activity trail shows the complete HUMAN/AGENT sequence.
-
-For a video under three minutes, group those steps into discovery, validation, human approval, disruption, surgical repair, and trust-boundary closeout.
-
-## Project structure
-
-```text
-src/
-├── data/                 deterministic Riverlight seed scenario
-├── domain/               types, status derivation, matching rules, SHA-256
-├── store/                shared reactive state, persistence, approval workflow
-├── webmcp/               API types, tool definitions, registration lifecycle
-├── App.tsx               responsive product interface
-└── App.css               visual system and responsive layout
-```
-
-## Current scope
-
-CommonMesh is a competition-ready client-side demonstration of the interaction and trust model. It does not yet contact volunteers, reserve third-party assets, or provide multi-user server synchronization. Those actions would require identity, authorization, privacy, notification, and conflict-resolution work beyond this deterministic demo.
-
-## Challenge references
-
-- [The WebMCP Challenge](https://webmcp.devpost.com/)
-- [Official challenge rules](https://webmcp.devpost.com/rules)
-- [Chrome WebMCP imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api)
-- [WebMCP security guidance](https://developer.chrome.com/docs/ai/webmcp/secure-tools)
-- [WebMCP best practices](https://developer.chrome.com/docs/ai/webmcp/best-practices)
+See [`docs/JUDGING_CHECKLIST.md`](docs/JUDGING_CHECKLIST.md) for a factual mapping to WebMCP Leverage, Execution, Potential Impact, and Creativity & Ambition.
 
 ## License
 
 CommonMesh is available under the [MIT License](LICENSE).
+
+## References
+
+- [The WebMCP Challenge](https://webmcp.devpost.com/)
+- [Official Challenge Rules](https://webmcp.devpost.com/rules)
+- [Chrome WebMCP Imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api)
+- [Chrome WebMCP Tool Security](https://developer.chrome.com/docs/ai/webmcp/secure-tools)
+- [Chrome WebMCP Best Practices](https://developer.chrome.com/docs/ai/webmcp/best-practices)

@@ -313,6 +313,13 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             filters.needId &&
             !store.getState().needs.some((need) => need.id === filters.needId)
           ) {
+            store.recordActivity(
+              'agent',
+              'search_resources',
+              'Resource search could not start',
+              'NEED_NOT_FOUND',
+              'failed',
+            )
             return {
               ok: false,
               error: {
@@ -357,6 +364,13 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
           const resourceId = stringField(input, 'resourceId', true)!
           const resource = store.getResourceDetails(resourceId)
           if (!resource) {
+            store.recordActivity(
+              'agent',
+              'get_resource_details',
+              'Resource lookup failed',
+              'RESOURCE_NOT_FOUND',
+              'failed',
+            )
             return {
               ok: false,
               error: {
@@ -400,6 +414,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             validation.valid
               ? `${validation.summary.needsFullyCovered} needs fully covered`
               : validation.errors[0]?.code,
+            validation.valid ? 'success' : 'failed',
           )
           return {
             ok: true,
@@ -578,11 +593,36 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
   ]
 }
 
+export type CommonMeshToolCatalogueEntry = {
+  name: string
+  purpose: string
+  access: 'read' | 'write'
+}
+
+export function getCommonMeshToolCatalogue(
+  store: CoordinationStore,
+): CommonMeshToolCatalogueEntry[] {
+  return createCommonMeshTools(store).map((tool) => ({
+    name: tool.name,
+    purpose: tool.title ?? tool.description,
+    access: tool.annotations?.readOnlyHint ? 'read' : 'write',
+  }))
+}
+
 export async function registerCommonMeshTools(
   modelContext: WebMCPModelContext,
   store: CoordinationStore,
+  lifecycleSignal?: AbortSignal,
 ) {
   const controller = new AbortController()
+  const abortRegistration = () => controller.abort()
+  if (lifecycleSignal?.aborted) {
+    controller.abort()
+  } else {
+    lifecycleSignal?.addEventListener('abort', abortRegistration, {
+      once: true,
+    })
+  }
   const tools = createCommonMeshTools(store)
   try {
     await Promise.all(
@@ -592,11 +632,15 @@ export async function registerCommonMeshTools(
     )
   } catch (error) {
     controller.abort()
+    lifecycleSignal?.removeEventListener('abort', abortRegistration)
     throw error
   }
   return {
     count: tools.length,
     names: tools.map((tool) => tool.name),
-    unregister: () => controller.abort(),
+    unregister: () => {
+      lifecycleSignal?.removeEventListener('abort', abortRegistration)
+      controller.abort()
+    },
   }
 }

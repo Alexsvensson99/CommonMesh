@@ -358,6 +358,7 @@ export function createSeedState(): CoordinationState {
       {
         id: 'activity-ready',
         actor: 'system',
+        outcome: 'info',
         action: 'demo_ready',
         summary: 'Deterministic event workspace loaded',
         timestamp: '2026-09-05T07:45:00+02:00',

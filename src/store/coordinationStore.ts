@@ -11,9 +11,11 @@ import {
 import { createSeedState } from '../data/seed'
 import type {
   ActivityActor,
+  ActivityOutcome,
   AssignmentInput,
   CoordinationState,
   NeedCategory,
+  Resource,
   StagedPlan,
   ToolResult,
 } from '../domain/types'
@@ -24,6 +26,18 @@ const MAX_ACTIVITY_ENTRIES = 80
 type Listener = () => void
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
+type PlanDigestFactory = typeof createPlanDigest
+
+const activityOutcomes: ActivityOutcome[] = ['success', 'failed', 'info']
+
+function getBrowserStorage(): StorageLike | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
 
 export type NeedSearch = {
   query?: string
@@ -60,7 +74,15 @@ function loadState(storage: StorageLike | null): CoordinationState {
     ) {
       return createSeedState()
     }
-    return parsed
+    return {
+      ...parsed,
+      activity: parsed.activity.map((entry) => ({
+        ...entry,
+        outcome: activityOutcomes.includes(entry.outcome)
+          ? entry.outcome
+          : 'info',
+      })),
+    }
   } catch {
     return createSeedState()
   }
@@ -71,17 +93,20 @@ export class CoordinationStore {
   private readonly listeners = new Set<Listener>()
   private readonly storage: StorageLike | null
   private readonly now: () => string
+  private readonly createDigest: PlanDigestFactory
   private activitySequence = 0
+  private stageRequestSequence = 0
 
   constructor(options?: {
     storage?: StorageLike | null
     now?: () => string
     initialState?: CoordinationState
+    createDigest?: PlanDigestFactory
   }) {
-    const browserStorage =
-      typeof window === 'undefined' ? null : window.localStorage
+    const browserStorage = getBrowserStorage()
     this.storage = options?.storage === undefined ? browserStorage : options.storage
     this.now = options?.now ?? (() => new Date().toISOString())
+    this.createDigest = options?.createDigest ?? createPlanDigest
     this.state = options?.initialState
       ? structuredClone(options.initialState)
       : loadState(this.storage)
@@ -110,12 +135,14 @@ export class CoordinationStore {
     action: string,
     summary: string,
     detail?: string,
+    outcome: ActivityOutcome = 'success',
   ) {
     this.activitySequence += 1
     return [
       {
         id: `activity-${this.activitySequence}-${Date.now()}`,
         actor,
+        outcome,
         action,
         summary,
         timestamp: this.now(),
@@ -130,11 +157,34 @@ export class CoordinationStore {
     action: string,
     summary: string,
     detail?: string,
+    outcome: ActivityOutcome = 'success',
   ) {
     this.publish({
       ...this.state,
-      activity: this.activity(this.state, actor, action, summary, detail),
+      activity: this.activity(
+        this.state,
+        actor,
+        action,
+        summary,
+        detail,
+        outcome,
+      ),
     })
+  }
+
+  private failure<T>(
+    actor: ActivityActor,
+    action: string,
+    summary: string,
+    error: { code: string; message: string; details?: unknown },
+    nextAction?: string,
+  ): ToolResult<T> {
+    this.recordActivity(actor, action, summary, error.code, 'failed')
+    return {
+      ok: false,
+      error,
+      ...(nextAction ? { nextAction } : {}),
+    }
   }
 
   getSnapshot() {
@@ -304,6 +354,8 @@ export class CoordinationStore {
     intent: string,
     actor: ActivityActor = 'agent',
   ): Promise<ToolResult<StagedPlan>> {
+    const stageRequest = ++this.stageRequestSequence
+    const sourceRevision = this.state.resourceRevision
     const normalized = normalizeAssignments(assignments)
     const validation = validateMatchPlan(this.state, normalized)
     if (!validation.valid) {
@@ -312,6 +364,7 @@ export class CoordinationStore {
         'stage_match_plan',
         'Rejected an invalid coordination plan',
         `${validation.errors.length} validation error${validation.errors.length === 1 ? '' : 's'}`,
+        'failed',
       )
       return {
         ok: false,
@@ -324,16 +377,47 @@ export class CoordinationStore {
       }
     }
 
-    const digest = await createPlanDigest(
-      this.state.resourceRevision,
-      normalized,
-    )
+    const digest = await this.createDigest(sourceRevision, normalized)
+    if (stageRequest !== this.stageRequestSequence) {
+      this.recordActivity(
+        actor,
+        'stage_match_plan',
+        'Discarded a superseded staging request',
+        'A newer plan was staged first.',
+        'failed',
+      )
+      return {
+        ok: false,
+        error: {
+          code: 'STAGE_SUPERSEDED',
+          message: 'A newer plan replaced this staging request.',
+        },
+        nextAction: 'Inspect the currently staged plan before continuing.',
+      }
+    }
+    if (sourceRevision !== this.state.resourceRevision) {
+      this.recordActivity(
+        actor,
+        'stage_match_plan',
+        'Discarded a stale staging request',
+        `revision ${sourceRevision} changed to ${this.state.resourceRevision}`,
+        'failed',
+      )
+      return {
+        ok: false,
+        error: {
+          code: 'STALE_PLAN',
+          message: 'Coordination state changed while the plan was being staged.',
+        },
+        nextAction: 'Inspect the latest snapshot, validate, and stage again.',
+      }
+    }
     const plan: StagedPlan = {
       id: `CM-${digest.slice(7, 13).toUpperCase()}`,
       digest,
       intent: intent.trim() || 'Coordinate selected community needs',
       assignments: normalized,
-      sourceRevision: this.state.resourceRevision,
+      sourceRevision,
       createdAt: this.now(),
       status: 'staged',
       approval: null,
@@ -371,40 +455,49 @@ export class CoordinationStore {
   approveStagedPlan(digest: string): ToolResult<StagedPlan> {
     const stagedPlan = this.state.stagedPlan
     if (!stagedPlan) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'approve_plan',
+        'Approval blocked because no plan was staged',
+        {
           code: 'NO_STAGED_PLAN',
           message: 'There is no staged plan to approve.',
         },
-      }
+      )
     }
     if (stagedPlan.status === 'committed') {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'approve_plan',
+        `Approval blocked for ${stagedPlan.id}`,
+        {
           code: 'PLAN_ALREADY_COMMITTED',
           message: `${stagedPlan.id} has already been committed.`,
         },
-      }
+      )
     }
     if (stagedPlan.digest !== digest) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'approve_plan',
+        `Approval blocked for ${stagedPlan.id}`,
+        {
           code: 'DIGEST_MISMATCH',
           message: 'Approval must target the exact digest shown in the UI.',
         },
-      }
+      )
     }
     if (stagedPlan.sourceRevision !== this.state.resourceRevision) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'approve_plan',
+        `Approval blocked for stale plan ${stagedPlan.id}`,
+        {
           code: 'STALE_PLAN',
           message: 'The coordination state changed. Restage before approval.',
         },
-      }
+        'Restage the plan against current resources.',
+      )
     }
 
     const approved: StagedPlan = {
@@ -439,31 +532,37 @@ export class CoordinationStore {
   ): ToolResult<{ rejectedPlanId: string; rejectedDigest: string }> {
     const stagedPlan = this.state.stagedPlan
     if (!stagedPlan) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'reject_plan',
+        'Rejection blocked because no plan was staged',
+        {
           code: 'NO_STAGED_PLAN',
           message: 'There is no staged plan to reject.',
         },
-      }
+      )
     }
     if (stagedPlan.status === 'committed') {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'reject_plan',
+        `Rejection blocked for ${stagedPlan.id}`,
+        {
           code: 'PLAN_ALREADY_COMMITTED',
           message: `${stagedPlan.id} has already been committed.`,
         },
-      }
+      )
     }
     if (stagedPlan.digest !== digest) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'human',
+        'reject_plan',
+        `Rejection blocked for ${stagedPlan.id}`,
+        {
           code: 'DIGEST_MISMATCH',
           message: 'Rejection must target the exact plan shown in the UI.',
         },
-      }
+      )
     }
 
     this.publish({
@@ -490,68 +589,74 @@ export class CoordinationStore {
   commitApprovedPlan(digest: string): ToolResult<StagedPlan> {
     const stagedPlan = this.state.stagedPlan
     if (!stagedPlan) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        'Commit blocked because no plan was staged',
+        {
           code: 'NO_STAGED_PLAN',
           message: 'There is no staged plan to commit.',
         },
-        nextAction: 'Validate and stage a plan first.',
-      }
+        'Validate and stage a plan first.',
+      )
     }
     if (stagedPlan.status === 'committed') {
-      return {
-        ok: false,
-        error: {
-          code: 'PLAN_ALREADY_COMMITTED',
-          message: `${stagedPlan.id} has already been committed.`,
-        },
-      }
-    }
-    if (stagedPlan.digest !== digest) {
-      return {
-        ok: false,
-        error: {
-          code: 'DIGEST_MISMATCH',
-          message: 'The supplied digest does not match the staged plan.',
-        },
-      }
-    }
-    if (stagedPlan.sourceRevision !== this.state.resourceRevision) {
-      return {
-        ok: false,
-        error: {
-          code: 'STALE_PLAN',
-          message: 'Resources or assignments changed after this plan was staged.',
-        },
-        nextAction: 'Inspect the latest snapshot and stage a repaired plan.',
-      }
-    }
-    if (!stagedPlan.approval) {
-      this.recordActivity(
+      return this.failure(
         'agent',
         'commit_approved_plan',
         `Commit blocked for ${stagedPlan.id}`,
-        'APPROVAL_REQUIRED',
+        {
+          code: 'PLAN_ALREADY_COMMITTED',
+          message: `${stagedPlan.id} has already been committed.`,
+        },
       )
-      return {
-        ok: false,
-        error: {
+    }
+    if (stagedPlan.digest !== digest) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for ${stagedPlan.id}`,
+        {
+          code: 'DIGEST_MISMATCH',
+          message: 'The supplied digest does not match the staged plan.',
+        },
+      )
+    }
+    if (stagedPlan.sourceRevision !== this.state.resourceRevision) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for stale plan ${stagedPlan.id}`,
+        {
+          code: 'STALE_PLAN',
+          message: 'Resources or assignments changed after this plan was staged.',
+        },
+        'Inspect the latest snapshot and stage a repaired plan.',
+      )
+    }
+    if (!stagedPlan.approval) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for ${stagedPlan.id}`,
+        {
           code: 'APPROVAL_REQUIRED',
           message:
             'A human must approve the exact staged-plan digest in the visible UI.',
         },
-        nextAction: 'Ask the human to review and approve the staged plan.',
-      }
+        'Ask the human to review and approve the staged plan.',
+      )
     }
     if (stagedPlan.approval.digest !== digest) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for ${stagedPlan.id}`,
+        {
           code: 'APPROVAL_DIGEST_MISMATCH',
           message: 'The human approval is bound to a different plan digest.',
         },
-      }
+      )
     }
 
     const validation = validateMatchPlan(
@@ -559,15 +664,17 @@ export class CoordinationStore {
       stagedPlan.assignments,
     )
     if (!validation.valid) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for invalid plan ${stagedPlan.id}`,
+        {
           code: 'PLAN_INVALID',
           message: 'The approved plan no longer validates.',
           details: validation,
         },
-        nextAction: 'Inspect the latest snapshot and stage a repaired plan.',
-      }
+        'Inspect the latest snapshot and stage a repaired plan.',
+      )
     }
 
     const committedAt = this.now()
@@ -619,18 +726,20 @@ export class CoordinationStore {
     resourceId: string,
     unavailable: boolean,
     actor: ActivityActor = 'human',
-  ) {
+  ): ToolResult<Resource> {
     const resource = this.state.resources.find(
       (candidate) => candidate.id === resourceId,
     )
     if (!resource) {
-      return {
-        ok: false,
-        error: {
+      return this.failure<Resource>(
+        actor,
+        'set_resource_availability',
+        'Resource update failed',
+        {
           code: 'RESOURCE_NOT_FOUND',
           message: `Resource "${resourceId}" does not exist.`,
         },
-      } satisfies ToolResult<null>
+      )
     }
     const currentlyUnavailable = resource.availability.status === 'unavailable'
     if (currentlyUnavailable === unavailable) {
@@ -655,18 +764,31 @@ export class CoordinationStore {
           }
         : candidate,
     )
+    const invalidatedApproval = Boolean(
+      this.state.stagedPlan?.status !== 'committed' &&
+        this.state.stagedPlan?.approval,
+    )
+    const stagedPlan =
+      this.state.stagedPlan && this.state.stagedPlan.status !== 'committed'
+        ? {
+            ...this.state.stagedPlan,
+            status: 'staged' as const,
+            approval: null,
+          }
+        : this.state.stagedPlan
     this.publish({
       ...this.state,
       resourceRevision: this.state.resourceRevision + 1,
       resources,
+      stagedPlan,
       activity: this.activity(
         this.state,
         actor,
         'set_resource_availability',
         `${resource.name} marked ${unavailable ? 'unavailable' : 'available'}`,
         unavailable
-          ? 'Any dependent committed need is now disrupted.'
-          : 'The resource can be considered by future plans.',
+          ? `Any dependent committed need is now disrupted.${invalidatedApproval ? ' Earlier plan approval was cleared.' : ''}`
+          : `The resource can be considered by future plans.${invalidatedApproval ? ' Earlier plan approval was cleared.' : ''}`,
       ),
     })
 
@@ -682,13 +804,15 @@ export class CoordinationStore {
   undoLastCommit(): ToolResult<{ undonePlanId: string }> {
     const frame = this.state.lastCommit
     if (!frame) {
-      return {
-        ok: false,
-        error: {
+      return this.failure(
+        'agent',
+        'undo_last_commit',
+        'Undo blocked because no commit is available',
+        {
           code: 'NOTHING_TO_UNDO',
           message: 'There is no committed plan available for undo.',
         },
-      }
+      )
     }
 
     this.publish({
@@ -713,6 +837,7 @@ export class CoordinationStore {
   }
 
   resetDemo() {
+    this.stageRequestSequence += 1
     const reset = createSeedState()
     reset.activity = this.activity(
       reset,

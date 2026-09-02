@@ -21,6 +21,7 @@ export function useWebMCP() {
     let disposed = false
     let unregister: (() => void) | undefined
     let attempts = 0
+    const lifecycleController = new AbortController()
 
     const register = async () => {
       if (disposed || unregister) return true
@@ -31,6 +32,7 @@ export function useWebMCP() {
         const registration = await registerCommonMeshTools(
           modelContext,
           coordinationStore,
+          lifecycleController.signal,
         )
         if (disposed) {
           registration.unregister()
@@ -46,7 +48,8 @@ export function useWebMCP() {
           'system',
           'webmcp_connected',
           'WebMCP connected to the shared workspace',
-          registration.names.join(' · '),
+          `${registration.count} structured tools registered on this page`,
+          'info',
         )
         return true
       } catch (error) {
@@ -55,10 +58,15 @@ export function useWebMCP() {
             state: 'error',
             toolCount: 0,
             detail:
-              error instanceof Error
-                ? error.message
-                : 'WebMCP tool registration failed',
+              'WebMCP tools could not be registered. Reload or use a supported browser.',
           })
+          coordinationStore.recordActivity(
+            'system',
+            'webmcp_registration',
+            'WebMCP registration failed',
+            error instanceof Error ? error.name : 'REGISTRATION_ERROR',
+            'failed',
+          )
         }
         return true
       }
@@ -83,6 +91,7 @@ export function useWebMCP() {
     return () => {
       disposed = true
       window.clearInterval(timer)
+      lifecycleController.abort()
       unregister?.()
     }
   }, [])

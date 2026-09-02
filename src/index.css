@@ -1,17 +1,17 @@
 :root {
-  color: #192621;
-  background: #f3f5f1;
+  color: #192921;
+  background: #f2f4f1;
   font-family:
     Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --ink: #192621;
-  --muted: #68746f;
+  --muted: #63716a;
   --soft-muted: #8d9692;
   --line: #dde3de;
   --surface: #ffffff;
-  --canvas: #f3f5f1;
+  --canvas: #f2f4f1;
   --deep: #122823;
   --mint: #b9f4cf;
   --mint-strong: #3c9a67;
@@ -29,6 +29,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 86px;
 }
 
 body {
@@ -36,6 +37,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--canvas);
+  line-height: 1.5;
 }
 
 button,
@@ -50,9 +52,14 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button {
+  color: inherit;
+}
+
 button:focus-visible,
-a:focus-visible {
-  outline: 3px solid rgba(62, 151, 103, 0.32);
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(40, 126, 78, 0.38);
   outline-offset: 2px;
 }
 

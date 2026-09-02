@@ -7,6 +7,8 @@ export type NeedCategory =
 
 export type ActivityActor = 'agent' | 'human' | 'system'
 
+export type ActivityOutcome = 'success' | 'failed' | 'info'
+
 export type Availability = {
   start: string
   end: string
@@ -94,6 +96,7 @@ export type StagedPlan = MatchPlan & {
 export type ActivityLogEntry = {
   id: string
   actor: ActivityActor
+  outcome: ActivityOutcome
   action: string
   summary: string
   timestamp: string
@@ -157,6 +160,8 @@ export type PlanValidationResult = {
     uniqueResources: number
     totalTravelKm: number
     estimatedVolunteerHours: number
+    preservedAssignments: number
+    replacedAssignments: number
   }
   summary: {
     assignmentCount: number

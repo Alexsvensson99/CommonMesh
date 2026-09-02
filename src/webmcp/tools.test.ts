@@ -4,7 +4,11 @@ import { buildRecommendedAssignments } from '../domain/coordination'
 import type { ToolResult } from '../domain/types'
 import { CoordinationStore } from '../store/coordinationStore'
 import type { WebMCPModelContext, WebMCPTool } from './types'
-import { createCommonMeshTools, registerCommonMeshTools } from './tools'
+import {
+  createCommonMeshTools,
+  getCommonMeshToolCatalogue,
+  registerCommonMeshTools,
+} from './tools'
 
 const fixedNow = () => '2026-09-05T08:00:00+02:00'
 
@@ -49,6 +53,11 @@ describe('CommonMesh WebMCP tools', () => {
       untrustedContentHint: true,
     })
     expect(names).not.toContain('approve_staged_plan')
+
+    const catalogue = getCommonMeshToolCatalogue(makeStore())
+    expect(catalogue).toHaveLength(11)
+    expect(catalogue.filter((tool) => tool.access === 'read')).toHaveLength(7)
+    expect(catalogue.filter((tool) => tool.access === 'write')).toHaveLength(4)
   })
 
   it('executes every tool through the primary collaboration flow', async () => {
@@ -156,12 +165,19 @@ describe('CommonMesh WebMCP tools', () => {
         signal = options?.signal
       },
     }) as WebMCPModelContext
+    const lifecycle = new AbortController()
 
-    const result = await registerCommonMeshTools(context, makeStore())
+    const result = await registerCommonMeshTools(
+      context,
+      makeStore(),
+      lifecycle.signal,
+    )
 
     expect(result.count).toBe(11)
     expect(registered).toHaveLength(11)
     expect(signal?.aborted).toBe(false)
+    lifecycle.abort()
+    expect(signal?.aborted).toBe(true)
     result.unregister()
     expect(signal?.aborted).toBe(true)
   })
