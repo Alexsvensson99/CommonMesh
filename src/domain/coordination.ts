@@ -2,6 +2,7 @@ import type {
   AssignmentInput,
   CoordinationSnapshot,
   CoordinationState,
+  Constraint,
   Need,
   NeedStatus,
   NeedWithStatus,
@@ -32,6 +33,27 @@ const overlaps = (
 const getResource = (state: CoordinationState, resourceId: string) =>
   state.resources.find((resource) => resource.id === resourceId)
 
+const isResourceUnavailable = (resource: Resource) =>
+  resource.availability.status === 'unavailable'
+
+export function getResourceConstraints(
+  state: CoordinationState,
+  resource: Resource,
+): Constraint[] {
+  return [
+    {
+      type: 'availability',
+      start: resource.availability.start,
+      end: resource.availability.end,
+    },
+    { type: 'capacity', value: resource.capacity, unit: resource.unit },
+    { type: 'maximum_distance_km', value: state.maxDistanceKm },
+    ...(resource.maxHours === null
+      ? []
+      : ([{ type: 'maximum_hours', value: resource.maxHours }] as Constraint[])),
+  ]
+}
+
 export function getNeedStatus(
   state: CoordinationState,
   need: Need,
@@ -45,7 +67,9 @@ export function getNeedStatus(
   )
   const availableCommittedQuantity = assignments.reduce((sum, assignment) => {
     const resource = getResource(state, assignment.resourceId)
-    return resource && !resource.unavailable ? sum + assignment.quantity : sum
+    return resource && !isResourceUnavailable(resource)
+      ? sum + assignment.quantity
+      : sum
   }, 0)
 
   let status: NeedStatus = 'open'
@@ -70,6 +94,12 @@ export function getCoordinationSnapshot(
   const covered = needs.filter((need) => need.status === 'covered').length
   const disrupted = needs.filter((need) => need.status === 'disrupted').length
   const open = needs.length - covered - disrupted
+  const availableResources = state.resources.filter(
+    (resource) => !isResourceUnavailable(resource),
+  ).length
+  const assignedResourceIds = new Set(
+    state.committedAssignments.map((assignment) => assignment.resourceId),
+  )
 
   return {
     event: {
@@ -84,12 +114,28 @@ export function getCoordinationSnapshot(
       covered,
       disrupted,
       resources: state.resources.length,
-      availableResources: state.resources.filter(
-        (resource) => !resource.unavailable,
-      ).length,
+      availableResources,
     },
     coveragePercent:
       needs.length === 0 ? 100 : Math.round((covered / needs.length) * 100),
+    openNeeds: needs.filter((need) => need.status !== 'covered'),
+    currentAssignments: structuredClone(state.committedAssignments),
+    resourceSummary: {
+      total: state.resources.length,
+      available: availableResources,
+      unavailable: state.resources.length - availableResources,
+      assigned: assignedResourceIds.size,
+    },
+    stagedPlanStatus: state.stagedPlan
+      ? {
+          id: state.stagedPlan.id,
+          digest: state.stagedPlan.digest,
+          status: state.stagedPlan.status,
+          stale:
+            state.stagedPlan.status !== 'committed' &&
+            state.stagedPlan.sourceRevision !== state.resourceRevision,
+        }
+      : null,
     stagedPlan: state.stagedPlan,
     needs,
   }
@@ -258,7 +304,7 @@ export function validateMatchPlan(
 
     if (!need || !resource) return
 
-    if (resource.unavailable) {
+    if (isResourceUnavailable(resource)) {
       errors.push(
         issue(
           'RESOURCE_UNAVAILABLE',
@@ -270,7 +316,7 @@ export function validateMatchPlan(
       )
     }
 
-    if (resource.category !== need.category) {
+    if (resource.type !== need.category) {
       errors.push(
         issue(
           'CATEGORY_MISMATCH',
@@ -321,7 +367,10 @@ export function validateMatchPlan(
       )
     }
 
-    if (start < toTime(resource.availableStart) || end > toTime(resource.availableEnd)) {
+    if (
+      start < toTime(resource.availability.start) ||
+      end > toTime(resource.availability.end)
+    ) {
       errors.push(
         issue(
           'RESOURCE_TIME_CONFLICT',
@@ -345,26 +394,21 @@ export function validateMatchPlan(
       )
     }
 
-    if (
-      resource.maxHours !== null &&
-      durationHours(assignment.start, assignment.end) > resource.maxHours
-    ) {
+    if (resource.distanceKm > state.maxDistanceKm) {
       errors.push(
         issue(
-          'MAX_HOURS_EXCEEDED',
-          `${resource.name} is limited to ${resource.maxHours} hours.`,
+          'MAX_DISTANCE_EXCEEDED',
+          `${resource.name} is ${resource.distanceKm} km away; the event limit is ${state.maxDistanceKm} km.`,
           index,
           need.id,
           resource.id,
         ),
       )
-    }
-
-    if (resource.distanceKm > 10) {
+    } else if (resource.distanceKm >= state.maxDistanceKm * 0.8) {
       warnings.push(
         issue(
-          'LONG_TRAVEL_DISTANCE',
-          `${resource.name} is ${resource.distanceKm} km from the hub.`,
+          'HIGH_TRAVEL_DISTANCE',
+          `${resource.name} is close to the ${state.maxDistanceKm} km travel limit.`,
           index,
           need.id,
           resource.id,
@@ -427,6 +471,23 @@ export function validateMatchPlan(
       )
     }
 
+    const totalHours = windows.reduce(
+      (sum, window) =>
+        sum + durationHours(window.start, window.end) * window.quantity,
+      0,
+    )
+    if (resource.maxHours !== null && totalHours > resource.maxHours) {
+      errors.push(
+        issue(
+          'MAX_HOURS_EXCEEDED',
+          `${resource.name} would work ${round(totalHours)} hours; the limit is ${resource.maxHours}.`,
+          undefined,
+          undefined,
+          resource.id,
+        ),
+      )
+    }
+
     const hasConflict = windows.some((window, index) =>
       windows.some(
         (other, otherIndex) =>
@@ -464,15 +525,76 @@ export function validateMatchPlan(
     )
   }).length
 
+  const preservedAssignments = state.committedAssignments.filter(
+    (assignment) => !targetNeedIds.has(assignment.needId),
+  )
+  const projectedAssignments = [...preservedAssignments, ...assignments]
+  const uncoveredNeeds = state.needs.flatMap((need) => {
+    const coveredQuantity = projectedAssignments
+      .filter((assignment) => assignment.needId === need.id)
+      .filter((assignment) => {
+        const resource = getResource(state, assignment.resourceId)
+        return resource && !isResourceUnavailable(resource)
+      })
+      .reduce((sum, assignment) => sum + assignment.quantity, 0)
+    if (coveredQuantity >= need.quantity) return []
+    return [
+      {
+        needId: need.id,
+        title: need.title,
+        requiredQuantity: need.quantity,
+        coveredQuantity,
+        remainingQuantity: round(need.quantity - coveredQuantity),
+        unit: need.unit,
+      },
+    ]
+  })
+  const projectedCovered = state.needs.length - uncoveredNeeds.length
+  const conflictCodes = new Set([
+    'RESOURCE_TIME_CONFLICT',
+    'NEED_TIME_NOT_COVERED',
+    'RESOURCE_OVERBOOKED',
+    'RESOURCE_TIME_OVERLAP',
+  ])
+  const conflicts = errors.filter((candidate) => conflictCodes.has(candidate.code))
+  const estimatedVolunteerHours = round(
+    assignments.reduce((sum, assignment) => {
+      const resource = getResource(state, assignment.resourceId)
+      if (resource?.type !== 'people') return sum
+      return sum + durationHours(assignment.start, assignment.end) * assignment.quantity
+    }, 0),
+  )
+  const totalTravelKmRounded = round(totalTravelKm)
+  const coveragePercentage =
+    state.needs.length === 0
+      ? 100
+      : Math.round((projectedCovered / state.needs.length) * 100)
+
   return {
     valid: errors.length === 0,
     errors,
     warnings,
+    uncoveredNeeds,
+    conflicts,
+    constraintViolations: errors,
+    coverage: {
+      needsTotal: state.needs.length,
+      needsFullyCovered: projectedCovered,
+      percentage: coveragePercentage,
+    },
+    metrics: {
+      assignmentCount: assignments.length,
+      needsTargeted: targetNeedIds.size,
+      uniqueResources: resourceIds.size,
+      totalTravelKm: totalTravelKmRounded,
+      estimatedVolunteerHours,
+    },
     summary: {
       assignmentCount: assignments.length,
       needsTargeted: targetNeedIds.size,
       needsFullyCovered: fullyCovered,
-      totalTravelKm: round(totalTravelKm),
+      totalTravelKm: totalTravelKmRounded,
+      estimatedVolunteerHours,
     },
   }
 }
@@ -500,7 +622,8 @@ export function buildRecommendedAssignments(state: CoordinationState) {
   needs.forEach((need) => {
     const find = (resourceId: string) =>
       state.resources.find(
-        (resource) => resource.id === resourceId && !resource.unavailable,
+        (resource) =>
+          resource.id === resourceId && !isResourceUnavailable(resource),
       )
 
     if (need.id === 'need-chairs') {
@@ -521,6 +644,12 @@ export function buildRecommendedAssignments(state: CoordinationState) {
       volunteers.forEach((resource) =>
         result.push(assignmentFor(need, resource, 1)),
       )
+    }
+
+    if (need.id === 'need-driver') {
+      const resource =
+        find('res-nora-driver') ?? find('res-sam') ?? find('res-remote-driver')
+      if (resource) result.push(assignmentFor(need, resource))
     }
 
     if (need.id === 'need-lunch') {

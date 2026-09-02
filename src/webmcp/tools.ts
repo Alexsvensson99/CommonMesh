@@ -117,6 +117,7 @@ function parseNeedSearch(input: unknown): NeedSearch {
   const category = stringField(input, 'category')
   const urgency = stringField(input, 'urgency')
   const status = stringField(input, 'status')
+  const date = stringField(input, 'date')
   if (category && !categories.includes(category as NeedCategory)) {
     throw new Error('category is not supported.')
   }
@@ -126,30 +127,62 @@ function parseNeedSearch(input: unknown): NeedSearch {
   if (status && !['open', 'covered', 'disrupted'].includes(status)) {
     throw new Error('status must be open, covered, or disrupted.')
   }
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error('date must use YYYY-MM-DD format.')
+  }
   return {
     query: stringField(input, 'query'),
     category: category as NeedCategory | undefined,
     urgency: urgency as NeedSearch['urgency'],
     status: status as NeedSearch['status'],
+    date,
   }
 }
 
 function parseResourceSearch(input: unknown): ResourceSearch {
   if (!isRecord(input)) throw new Error('Input must be an object.')
-  const category = stringField(input, 'category')
+  const type = stringField(input, 'type')
   const availableOnly = input.availableOnly
-  if (category && !categories.includes(category as NeedCategory)) {
-    throw new Error('category is not supported.')
+  if (type && !categories.includes(type as NeedCategory)) {
+    throw new Error('type is not supported.')
   }
   if (availableOnly !== undefined && typeof availableOnly !== 'boolean') {
     throw new Error('availableOnly must be a boolean.')
   }
+  const date = stringField(input, 'date')
+  const start = stringField(input, 'start')
+  const end = stringField(input, 'end')
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error('date must use YYYY-MM-DD format.')
+  }
+  if (start && !Number.isFinite(Date.parse(start))) {
+    throw new Error('start must be an ISO 8601 timestamp.')
+  }
+  if (end && !Number.isFinite(Date.parse(end))) {
+    throw new Error('end must be an ISO 8601 timestamp.')
+  }
+  if (start && end && Date.parse(start) >= Date.parse(end)) {
+    throw new Error('end must be after start.')
+  }
+  const minCapacity = numberField(input, 'minCapacity')
+  const maxDistanceKm = numberField(input, 'maxDistanceKm')
+  if (minCapacity !== undefined && minCapacity < 0) {
+    throw new Error('minCapacity must be zero or greater.')
+  }
+  if (maxDistanceKm !== undefined && maxDistanceKm < 0) {
+    throw new Error('maxDistanceKm must be zero or greater.')
+  }
   return {
     query: stringField(input, 'query'),
-    category: category as NeedCategory | undefined,
+    type: type as NeedCategory | undefined,
+    skill: stringField(input, 'skill'),
     needId: stringField(input, 'needId'),
     availableOnly: availableOnly as boolean | undefined,
-    maxDistanceKm: numberField(input, 'maxDistanceKm'),
+    minCapacity,
+    maxDistanceKm,
+    date,
+    start,
+    end,
   }
 }
 
@@ -195,6 +228,10 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         properties: {
           query: { type: 'string', description: 'Optional case-insensitive text search.' },
           category: { type: 'string', enum: categories },
+          date: {
+            type: 'string',
+            description: 'Event date in YYYY-MM-DD format.',
+          },
           urgency: { type: 'string', enum: ['standard', 'high'] },
           status: { type: 'string', enum: ['open', 'covered', 'disrupted'] },
         },
@@ -227,7 +264,15 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         additionalProperties: false,
         properties: {
           query: { type: 'string', description: 'Optional case-insensitive text search.' },
-          category: { type: 'string', enum: categories },
+          type: {
+            type: 'string',
+            enum: categories,
+            description: 'Resource type to return.',
+          },
+          skill: {
+            type: 'string',
+            description: 'Required exact skill or licence identifier.',
+          },
           needId: {
             type: 'string',
             description: 'Optional need ID used to calculate compatibility signals.',
@@ -241,12 +286,42 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             description: 'Maximum one-way distance from the event hub.',
             minimum: 0,
           },
+          minCapacity: {
+            type: 'number',
+            description: 'Minimum resource quantity or capacity.',
+            minimum: 0,
+          },
+          date: {
+            type: 'string',
+            description: 'Availability date in YYYY-MM-DD format.',
+          },
+          start: {
+            type: 'string',
+            description: 'Required ISO 8601 availability start.',
+          },
+          end: {
+            type: 'string',
+            description: 'Required ISO 8601 availability end.',
+          },
         },
       },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: (input) =>
         guarded(() => {
           const filters = parseResourceSearch(input)
+          if (
+            filters.needId &&
+            !store.getState().needs.some((need) => need.id === filters.needId)
+          ) {
+            return {
+              ok: false,
+              error: {
+                code: 'NEED_NOT_FOUND',
+                message: `Need "${filters.needId}" does not exist.`,
+              },
+              nextAction: 'Call search_needs and use an exact returned need ID.',
+            }
+          }
           const resources = store.searchResources(filters)
           store.recordActivity(
             'agent',
@@ -294,7 +369,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             'agent',
             'get_resource_details',
             `Agent inspected ${resource.name}`,
-            `${resource.distanceKm} km · ${resource.unavailable ? 'unavailable' : 'available'}`,
+            `${resource.distanceKm} km · ${resource.availability.status}`,
           )
           return { ok: true, data: resource }
         }),
@@ -310,7 +385,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         properties: { assignments: assignmentsSchema },
         required: ['assignments'],
       },
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: (input) =>
         guarded(() => {
           if (!isRecord(input)) throw new Error('Input must be an object.')
@@ -352,7 +427,11 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         },
         required: ['intent', 'assignments'],
       },
-      annotations: { readOnlyHint: false, destructiveHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        untrustedContentHint: true,
+      },
       execute: async (input) => {
         try {
           if (!isRecord(input)) throw new Error('Input must be an object.')
@@ -370,7 +449,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
       description:
         'Read the exact staged plan, validation state, approval status, source revision, and digest before requesting approval or commit.',
       inputSchema: emptySchema,
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: () => {
         store.recordActivity(
           'agent',
@@ -382,7 +461,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         )
         return {
           ok: true,
-          data: store.getState().stagedPlan,
+          data: store.getStagedPlanDetails(),
           nextAction:
             store.getState().stagedPlan?.status === 'approved'
               ? 'Commit the exact approved digest.'
@@ -430,12 +509,18 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
           },
         },
       },
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: (input) =>
         guarded(() => {
           if (!isRecord(input)) throw new Error('Input must be an object.')
           const requested = numberField(input, 'limit') ?? 20
           const limit = Math.max(1, Math.min(50, Math.floor(requested)))
+          store.recordActivity(
+            'agent',
+            'get_activity_log',
+            'Agent inspected the collaboration trail',
+            `latest ${limit} entries requested`,
+          )
           return {
             ok: true,
             data: {

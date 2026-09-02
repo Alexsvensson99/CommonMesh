@@ -40,6 +40,7 @@ import {
 } from './domain/coordination'
 import type {
   ActivityEntry,
+  CoordinationState,
   NeedCategory,
   NeedWithStatus,
   Resource,
@@ -49,11 +50,11 @@ import {
   coordinationStore,
   useCoordinationState,
 } from './store/coordinationStore'
-import { useWebMCP } from './webmcp/useWebMCP'
+import { useWebMCP, type WebMCPStatus } from './webmcp/useWebMCP'
 import './App.css'
 
 const agentPrompt =
-  "Inspect the coordination snapshot. Cover every open need for Saturday's Riverlight Community Day using resources within 10 km. Respect availability, quantities, skills, time windows, and maximum hours. Validate the complete plan and stage it for my review. Do not commit anything until I approve the exact plan in CommonMesh."
+  "Inspect the coordination snapshot. Cover every open need for Saturday Community Day using resources within 10 km. Respect availability, quantities, skills, time windows, and maximum hours. Validate the complete plan and stage it for my review. Do not commit anything until I approve the exact plan in CommonMesh."
 
 const categoryIcons: Record<NeedCategory, LucideIcon> = {
   equipment: Box,
@@ -69,10 +70,6 @@ const categoryTones: Record<NeedCategory, string> = {
   people: 'green',
   food: 'orange',
   space: 'rose',
-}
-
-function shortDigest(digest: string) {
-  return `${digest.slice(0, 18)}…${digest.slice(-6)}`
 }
 
 function quantityLabel(quantity: number, unit: string) {
@@ -107,7 +104,7 @@ function BrandMark() {
   )
 }
 
-function Sidebar() {
+function Sidebar({ needCount }: { needCount: number }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -126,7 +123,7 @@ function Sidebar() {
         <a href="#needs">
           <HeartHandshake size={18} />
           Open needs
-          <span className="nav-count">6</span>
+          <span className="nav-count">{needCount}</span>
         </a>
         <a href="#resources">
           <PackageSearch size={18} />
@@ -135,6 +132,10 @@ function Sidebar() {
         <a href="#plan">
           <ClipboardCheck size={18} />
           Coordination plan
+        </a>
+        <a href="#assignments">
+          <ClipboardCheck size={18} />
+          Assignments
         </a>
         <a href="#activity">
           <ScrollText size={18} />
@@ -289,11 +290,12 @@ function ResourceCard({
   resource: Resource
   assigned: boolean
 }) {
-  const Icon = categoryIcons[resource.category]
-  const canToggle = assigned || resource.category === 'transport'
+  const Icon = categoryIcons[resource.type]
+  const unavailable = resource.availability.status === 'unavailable'
+  const canToggle = assigned || resource.type === 'transport'
   return (
-    <article className={`resource-card ${resource.unavailable ? 'unavailable' : ''}`}>
-      <div className={`resource-avatar ${categoryTones[resource.category]}`}>
+    <article className={`resource-card ${unavailable ? 'unavailable' : ''}`}>
+      <div className={`resource-avatar ${categoryTones[resource.type]}`}>
         <Icon size={18} />
       </div>
       <div className="resource-body">
@@ -302,10 +304,10 @@ function ResourceCard({
             <h3>{resource.name}</h3>
             <span>{resource.owner}</span>
           </div>
-          {assigned && !resource.unavailable && (
+          {assigned && !unavailable && (
             <span className="assigned-chip">Assigned</span>
           )}
-          {resource.unavailable && (
+          {unavailable && (
             <span className="unavailable-chip">Unavailable</span>
           )}
         </div>
@@ -316,7 +318,7 @@ function ResourceCard({
           </span>
           <span>
             <Clock3 size={13} />{' '}
-            {formatTimeWindow(resource.availableStart, resource.availableEnd)}
+            {formatTimeWindow(resource.availability.start, resource.availability.end)}
           </span>
           <span>
             {quantityLabel(resource.capacity, resource.unit)}
@@ -329,12 +331,12 @@ function ResourceCard({
             onClick={() =>
               coordinationStore.setResourceUnavailable(
                 resource.id,
-                !resource.unavailable,
+                !unavailable,
                 'human',
               )
             }
           >
-            {resource.unavailable ? (
+            {unavailable ? (
               <>
                 <RefreshCcw size={13} /> Restore availability
               </>
@@ -414,9 +416,13 @@ function PlanPanel({
   const stale = plan.sourceRevision !== state.resourceRevision && plan.status !== 'committed'
   const approved = plan.status === 'approved'
   const committed = plan.status === 'committed'
+  const issues = [...validation.errors, ...validation.warnings]
 
   return (
     <div className="plan-content">
+      <div className="agent-proposal-label">
+        <Bot size={15} /> Agent proposed coordination plan
+      </div>
       <div className="plan-summary-header">
         <div>
           <div className="eyebrow-row">
@@ -429,8 +435,8 @@ function PlanPanel({
           <p>{plan.intent}</p>
         </div>
         <div className="plan-score">
-          <strong>{validation.summary.needsFullyCovered}</strong>
-          <span>{validation.summary.needsFullyCovered === 1 ? 'need' : 'needs'}</span>
+          <strong>{validation.coverage.percentage}%</strong>
+          <span>projected coverage</span>
         </div>
       </div>
 
@@ -441,6 +447,9 @@ function PlanPanel({
         </span>
         <span>
           <Route size={14} /> {validation.summary.totalTravelKm} km total
+        </span>
+        <span>
+          <Clock3 size={14} /> {validation.summary.estimatedVolunteerHours} volunteer hours
         </span>
         <span className={validation.valid ? 'valid' : 'invalid'}>
           {validation.valid ? <ShieldCheck size={14} /> : <TriangleAlert size={14} />}
@@ -456,6 +465,39 @@ function PlanPanel({
             key={`${assignment.needId}-${assignment.resourceId}`}
           />
         ))}
+      </div>
+
+      <div className="plan-validation-summary">
+        <div>
+          <strong>Covered needs</strong>
+          <span>
+            {validation.coverage.needsFullyCovered}/{validation.coverage.needsTotal}
+          </span>
+        </div>
+        <div>
+          <strong>Uncovered needs</strong>
+          <span>
+            {validation.uncoveredNeeds.length === 0
+              ? 'None'
+              : validation.uncoveredNeeds.map((need) => need.title).join(', ')}
+          </span>
+        </div>
+        <div>
+          <strong>Constraint results</strong>
+          <span>
+            {validation.errors.length} blocking · {validation.warnings.length}{' '}
+            {validation.warnings.length === 1 ? 'warning' : 'warnings'}
+          </span>
+        </div>
+        {issues.length > 0 && (
+          <ul className="plan-issues">
+            {issues.slice(0, 3).map((item, index) => (
+              <li key={`${item.code}-${index}`}>
+                <code>{item.code}</code> {item.message}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className={`approval-box ${approved ? 'approved' : ''} ${committed ? 'committed' : ''}`}>
@@ -479,23 +521,41 @@ function PlanPanel({
                     ? 'Plan is stale'
                     : 'Human approval required'}
             </strong>
-            <span className="digest">{shortDigest(plan.digest)}</span>
+            <span className="digest" title={plan.digest}>{plan.digest}</span>
           </div>
         </div>
         {!committed && !approved && (
-          <button
-            type="button"
-            className="primary-button"
-            disabled={stale || !validation.valid}
-            onClick={() => coordinationStore.approveStagedPlan(plan.digest)}
-          >
-            <ShieldCheck size={15} /> Approve exact plan
-          </button>
+          <div className="approval-actions">
+            <button
+              type="button"
+              className="reject-button"
+              onClick={() => coordinationStore.rejectStagedPlan(plan.digest)}
+            >
+              <X size={15} /> Reject Plan
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={stale || !validation.valid}
+              onClick={() => coordinationStore.approveStagedPlan(plan.digest)}
+            >
+              <ShieldCheck size={15} /> Approve Plan
+            </button>
+          </div>
         )}
         {approved && (
-          <span className="agent-next">
-            <Bot size={14} /> Ready for agent commit
-          </span>
+          <div className="approval-actions">
+            <button
+              type="button"
+              className="reject-button"
+              onClick={() => coordinationStore.rejectStagedPlan(plan.digest)}
+            >
+              <X size={15} /> Reject Plan
+            </button>
+            <span className="agent-next">
+              <Bot size={14} /> Ready for agent commit
+            </span>
+          </div>
         )}
       </div>
 
@@ -523,7 +583,12 @@ function ActivityItem({ entry }: { entry: ActivityEntry }) {
       </div>
       <div>
         <div className="activity-line">
-          <strong>{entry.summary}</strong>
+          <strong>
+            <span className={`actor-label ${entry.actor}`}>
+              {entry.actor.toUpperCase()}
+            </span>
+            {entry.summary}
+          </strong>
           <time>{formatActivityTime(entry.timestamp)}</time>
         </div>
         {entry.detail && <p>{entry.detail}</p>}
@@ -557,6 +622,119 @@ function CoverageDonut({ percent }: { percent: number }) {
   )
 }
 
+function AssignmentsPanel({ state }: { state: CoordinationState }) {
+  return (
+    <section className="panel assignments-panel" id="assignments">
+      <div className="panel-heading">
+        <div>
+          <span className="section-kicker">Committed coordination</span>
+          <h2>Assignments</h2>
+        </div>
+        <span className="panel-count">{state.committedAssignments.length}</span>
+      </div>
+      {state.committedAssignments.length === 0 ? (
+        <div className="assignments-empty">
+          <ClipboardCheck size={19} />
+          <p>No assignments are committed. Agent plans remain proposals until a human approves their exact digest.</p>
+        </div>
+      ) : (
+        <div className="committed-grid">
+          {state.committedAssignments.map((assignment) => {
+            const need = state.needs.find(
+              (candidate) => candidate.id === assignment.needId,
+            )
+            const resource = state.resources.find(
+              (candidate) => candidate.id === assignment.resourceId,
+            )
+            if (!need || !resource) return null
+            const disrupted = resource.availability.status === 'unavailable'
+            return (
+              <article
+                className={`committed-assignment ${disrupted ? 'disrupted' : ''}`}
+                key={`${assignment.planId}-${assignment.needId}-${assignment.resourceId}`}
+              >
+                <div>
+                  <span className="assignment-plan-id">{assignment.planId}</span>
+                  <strong>{need.title}</strong>
+                  <p>{resource.name} · {quantityLabel(assignment.quantity, need.unit)}</p>
+                </div>
+                <div className="committed-assignment-meta">
+                  <span>{formatTimeWindow(assignment.start, assignment.end)}</span>
+                  <span className={disrupted ? 'assignment-flag disrupted' : 'assignment-flag'}>
+                    {disrupted ? <TriangleAlert size={13} /> : <Check size={13} />}
+                    {disrupted ? 'Affected' : 'Active'}
+                  </span>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function DemoControls({
+  webMCP,
+  vanUnavailable,
+}: {
+  webMCP: WebMCPStatus
+  vanUnavailable: boolean
+}) {
+  const webMCPReady = webMCP.state === 'connected'
+  return (
+    <section className="panel demo-panel" aria-labelledby="demo-controls-title">
+      <div className="panel-heading">
+        <div>
+          <span className="section-kicker">Repeatable judging flow</span>
+          <h2 id="demo-controls-title">Demo controls</h2>
+        </div>
+        <RefreshCcw size={18} />
+      </div>
+      <div className="demo-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => coordinationStore.resetDemo()}
+        >
+          <RefreshCcw size={15} /> Reset Demo
+        </button>
+        <button
+          type="button"
+          className={vanUnavailable ? 'secondary-button' : 'van-button'}
+          onClick={() =>
+            coordinationStore.setResourceUnavailable(
+              'res-northside-van',
+              !vanUnavailable,
+              'human',
+            )
+          }
+        >
+          {vanUnavailable ? <RefreshCcw size={15} /> : <Truck size={15} />}
+          {vanUnavailable
+            ? 'Restore primary van'
+            : 'Mark primary van unavailable'}
+        </button>
+      </div>
+      <div className={`webmcp-status-card ${webMCPReady ? 'connected' : ''}`}>
+        {webMCPReady ? <Radio size={17} /> : <WifiOff size={17} />}
+        <div>
+          <strong>
+            {webMCPReady
+              ? `WebMCP available · ${webMCP.toolCount} tools registered`
+              : 'WebMCP unavailable in this browser'}
+          </strong>
+          <p>
+            {webMCPReady
+              ? 'The status reflects the live document.modelContext registration.'
+              : 'The normal human interface still works; open this app in ChatGPT or a WebMCP-enabled Chrome build for agent tools.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function App() {
   const state = useCoordinationState()
   const webMCP = useWebMCP()
@@ -571,7 +749,7 @@ function App() {
     [state.committedAssignments],
   )
   const filteredResources = state.resources.filter(
-    (resource) => resourceFilter === 'all' || resource.category === resourceFilter,
+    (resource) => resourceFilter === 'all' || resource.type === resourceFilter,
   )
   const filteredNeeds = snapshot.needs.filter(
     (need) => needFilter === 'all' || need.status === needFilter,
@@ -579,6 +757,9 @@ function App() {
   const uniqueCommittedPlans = new Set(
     state.committedAssignments.map((assignment) => assignment.planId),
   ).size
+  const primaryVanUnavailable =
+    state.resources.find((resource) => resource.id === 'res-northside-van')
+      ?.availability.status === 'unavailable'
 
   const stageRecommended = async () => {
     setStaging(true)
@@ -601,7 +782,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      <Sidebar needCount={snapshot.totals.needs} />
       <main className="workspace" id="overview">
         <header className="topbar">
           <div className="mobile-brand">
@@ -611,7 +792,7 @@ function App() {
           <div className="breadcrumb">
             <span>Community workspaces</span>
             <ChevronRight size={14} />
-            <strong>Riverlight</strong>
+            <strong>{state.eventName}</strong>
           </div>
           <div className="topbar-actions">
             <WebMCPBadge
@@ -688,7 +869,11 @@ function App() {
             <MetricCard
               label="Active assignments"
               value={state.committedAssignments.length}
-              note={`${uniqueCommittedPlans} committed plan${uniqueCommittedPlans === 1 ? '' : 's'}`}
+              note={
+                state.stagedPlan
+                  ? `${state.stagedPlan.id} · ${state.stagedPlan.status}`
+                  : `${uniqueCommittedPlans} committed plan${uniqueCommittedPlans === 1 ? '' : 's'}`
+              }
               icon={ClipboardCheck}
               tone="green"
             />
@@ -751,7 +936,7 @@ function App() {
               <div className="panel-heading">
                 <div>
                   <span className="section-kicker">Shared staging area</span>
-                  <h2>Agent coordination plan</h2>
+                  <h2>Agent Plan</h2>
                 </div>
                 <div className="agent-presence">
                   <Bot size={15} />
@@ -799,6 +984,8 @@ function App() {
             </section>
           </section>
 
+          <AssignmentsPanel state={state} />
+
           <section className="lower-grid">
             <section className="panel prompt-panel">
               <div className="panel-heading">
@@ -821,6 +1008,11 @@ function App() {
               </div>
             </section>
 
+            <DemoControls
+              webMCP={webMCP}
+              vanUnavailable={primaryVanUnavailable}
+            />
+
             <section className="panel activity-panel" id="activity">
               <div className="panel-heading">
                 <div>
@@ -830,7 +1022,7 @@ function App() {
                 <span className="live-chip"><span /> Live</span>
               </div>
               <ol className="activity-list">
-                {state.activity.slice(0, 8).map((entry) => (
+                {state.activity.slice(0, 12).map((entry) => (
                   <ActivityItem entry={entry} key={entry.id} />
                 ))}
               </ol>

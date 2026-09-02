@@ -7,6 +7,19 @@ export type NeedCategory =
 
 export type ActivityActor = 'agent' | 'human' | 'system'
 
+export type Availability = {
+  start: string
+  end: string
+  status: 'available' | 'unavailable'
+}
+
+export type Constraint =
+  | { type: 'required_skill'; value: string }
+  | { type: 'capacity'; value: number; unit: string }
+  | { type: 'maximum_hours'; value: number }
+  | { type: 'maximum_distance_km'; value: number }
+  | { type: 'availability'; start: string; end: string }
+
 export type Need = {
   id: string
   title: string
@@ -15,6 +28,9 @@ export type Need = {
   quantity: number
   unit: string
   location: string
+  date: string
+  latitude?: number
+  longitude?: number
   start: string
   end: string
   urgency: 'standard' | 'high'
@@ -26,19 +42,17 @@ export type Resource = {
   id: string
   name: string
   description: string
-  category: NeedCategory
+  type: NeedCategory
   capacity: number
   unit: string
   owner: string
   distanceKm: number
-  availableStart: string
-  availableEnd: string
+  availability: Availability
   maxHours: number | null
   skills: string[]
-  unavailable: boolean
 }
 
-export type AssignmentInput = {
+export type Assignment = {
   needId: string
   resourceId: string
   quantity: number
@@ -46,31 +60,38 @@ export type AssignmentInput = {
   end: string
 }
 
-export type CommittedAssignment = AssignmentInput & {
+export type AssignmentInput = Assignment
+
+export type CommittedAssignment = Assignment & {
   planId: string
   committedAt: string
 }
 
-export type PlanApproval = {
+export type Approval = {
   digest: string
   approvedAt: string
   approvedBy: 'human-ui'
 }
 
+export type PlanApproval = Approval
+
+export type MatchPlan = {
+  intent: string
+  assignments: Assignment[]
+}
+
 export type StagedPlanStatus = 'staged' | 'approved' | 'committed'
 
-export type StagedPlan = {
+export type StagedPlan = MatchPlan & {
   id: string
   digest: string
-  intent: string
-  assignments: AssignmentInput[]
   sourceRevision: number
   createdAt: string
   status: StagedPlanStatus
   approval: PlanApproval | null
 }
 
-export type ActivityEntry = {
+export type ActivityLogEntry = {
   id: string
   actor: ActivityActor
   action: string
@@ -78,6 +99,8 @@ export type ActivityEntry = {
   timestamp: string
   detail?: string
 }
+
+export type ActivityEntry = ActivityLogEntry
 
 export type UndoFrame = {
   planId: string
@@ -87,10 +110,11 @@ export type UndoFrame = {
 }
 
 export type CoordinationState = {
-  schemaVersion: 1
+  schemaVersion: 2
   eventName: string
   eventDate: string
   hubLocation: string
+  maxDistanceKm: number
   resourceRevision: number
   needs: Need[]
   resources: Resource[]
@@ -112,11 +136,34 @@ export type PlanValidationResult = {
   valid: boolean
   errors: PlanValidationIssue[]
   warnings: PlanValidationIssue[]
+  uncoveredNeeds: Array<{
+    needId: string
+    title: string
+    requiredQuantity: number
+    coveredQuantity: number
+    remainingQuantity: number
+    unit: string
+  }>
+  conflicts: PlanValidationIssue[]
+  constraintViolations: PlanValidationIssue[]
+  coverage: {
+    needsTotal: number
+    needsFullyCovered: number
+    percentage: number
+  }
+  metrics: {
+    assignmentCount: number
+    needsTargeted: number
+    uniqueResources: number
+    totalTravelKm: number
+    estimatedVolunteerHours: number
+  }
   summary: {
     assignmentCount: number
     needsTargeted: number
     needsFullyCovered: number
     totalTravelKm: number
+    estimatedVolunteerHours: number
   }
 }
 
@@ -144,6 +191,20 @@ export type CoordinationSnapshot = {
     availableResources: number
   }
   coveragePercent: number
+  openNeeds: NeedWithStatus[]
+  currentAssignments: CommittedAssignment[]
+  resourceSummary: {
+    total: number
+    available: number
+    unavailable: number
+    assigned: number
+  }
+  stagedPlanStatus: {
+    id: string
+    digest: string
+    status: StagedPlanStatus
+    stale: boolean
+  } | null
   stagedPlan: StagedPlan | null
   needs: NeedWithStatus[]
 }

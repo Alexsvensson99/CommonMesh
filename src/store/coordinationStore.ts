@@ -4,6 +4,7 @@ import {
   createPlanDigest,
   getCoordinationSnapshot,
   getNeedStatus,
+  getResourceConstraints,
   normalizeAssignments,
   validateMatchPlan,
 } from '../domain/coordination'
@@ -17,7 +18,7 @@ import type {
   ToolResult,
 } from '../domain/types'
 
-const STORAGE_KEY = 'commonmesh-demo-state-v1'
+const STORAGE_KEY = 'commonmesh-demo-state-v2'
 const MAX_ACTIVITY_ENTRIES = 80
 
 type Listener = () => void
@@ -27,16 +28,22 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
 export type NeedSearch = {
   query?: string
   category?: NeedCategory
+  date?: string
   urgency?: 'standard' | 'high'
   status?: 'open' | 'covered' | 'disrupted'
 }
 
 export type ResourceSearch = {
   query?: string
-  category?: NeedCategory
+  type?: NeedCategory
+  skill?: string
   needId?: string
   availableOnly?: boolean
+  minCapacity?: number
   maxDistanceKm?: number
+  date?: string
+  start?: string
+  end?: string
 }
 
 function loadState(storage: StorageLike | null): CoordinationState {
@@ -46,7 +53,7 @@ function loadState(storage: StorageLike | null): CoordinationState {
     if (!raw) return createSeedState()
     const parsed = JSON.parse(raw) as CoordinationState
     if (
-      parsed.schemaVersion !== 1 ||
+      parsed.schemaVersion !== 2 ||
       !Array.isArray(parsed.needs) ||
       !Array.isArray(parsed.resources) ||
       !Array.isArray(parsed.activity)
@@ -139,6 +146,7 @@ export class CoordinationStore {
     return this.state.needs
       .map((need) => getNeedStatus(this.state, need))
       .filter((need) => !filters.category || need.category === filters.category)
+      .filter((need) => !filters.date || need.date === filters.date)
       .filter((need) => !filters.urgency || need.urgency === filters.urgency)
       .filter((need) => !filters.status || need.status === filters.status)
       .filter((need) => {
@@ -163,16 +171,40 @@ export class CoordinationStore {
       : undefined
 
     return this.state.resources
-      .filter((resource) => !filters.category || resource.category === filters.category)
+      .filter((resource) => !filters.type || resource.type === filters.type)
       .filter(
         (resource) =>
-          filters.availableOnly === false || !resource.unavailable,
+          !filters.skill || resource.skills.includes(filters.skill),
+      )
+      .filter(
+        (resource) =>
+          filters.availableOnly === false ||
+          resource.availability.status === 'available',
+      )
+      .filter(
+        (resource) =>
+          filters.minCapacity === undefined ||
+          resource.capacity >= filters.minCapacity,
       )
       .filter(
         (resource) =>
           filters.maxDistanceKm === undefined ||
           resource.distanceKm <= filters.maxDistanceKm,
       )
+      .filter((resource) => {
+        if (!filters.date) return true
+        return resource.availability.start.slice(0, 10) === filters.date
+      })
+      .filter((resource) => {
+        if (!filters.start && !filters.end) return true
+        return (
+          (!filters.start ||
+            Date.parse(resource.availability.start) <=
+              Date.parse(filters.start)) &&
+          (!filters.end ||
+            Date.parse(resource.availability.end) >= Date.parse(filters.end))
+        )
+      })
       .filter((resource) => {
         if (!normalizedQuery) return true
         const haystack = [
@@ -188,20 +220,22 @@ export class CoordinationStore {
       .map((resource) => {
         const compatibilityIssues: string[] = []
         if (need) {
-          if (resource.category !== need.category) {
+          if (resource.type !== need.category) {
             compatibilityIssues.push('category')
           }
           if (resource.unit !== need.unit) compatibilityIssues.push('unit')
-          if (resource.capacity <= 0) compatibilityIssues.push('capacity')
-          if (resource.unavailable) compatibilityIssues.push('unavailable')
+          if (resource.capacity < need.quantity) compatibilityIssues.push('capacity')
+          if (resource.availability.status === 'unavailable') {
+            compatibilityIssues.push('unavailable')
+          }
           if (
             need.requiredSkills.some((skill) => !resource.skills.includes(skill))
           ) {
             compatibilityIssues.push('required_skills')
           }
           if (
-            Date.parse(resource.availableStart) > Date.parse(need.start) ||
-            Date.parse(resource.availableEnd) < Date.parse(need.end)
+            Date.parse(resource.availability.start) > Date.parse(need.start) ||
+            Date.parse(resource.availability.end) < Date.parse(need.end)
           ) {
             compatibilityIssues.push('time_window')
           }
@@ -209,6 +243,9 @@ export class CoordinationStore {
             (Date.parse(need.end) - Date.parse(need.start)) / 3_600_000
           if (resource.maxHours !== null && duration > resource.maxHours) {
             compatibilityIssues.push('max_hours')
+          }
+          if (resource.distanceKm > this.state.maxDistanceKm) {
+            compatibilityIssues.push('distance')
           }
         }
         return {
@@ -227,11 +264,39 @@ export class CoordinationStore {
     const assignments = this.state.committedAssignments.filter(
       (assignment) => assignment.resourceId === resourceId,
     )
-    return { ...resource, committedAssignments: assignments }
+    return {
+      ...resource,
+      constraints: getResourceConstraints(this.state, resource),
+      currentAssignments: assignments,
+    }
   }
 
   validatePlan(assignments: AssignmentInput[]) {
     return validateMatchPlan(this.state, assignments)
+  }
+
+  getStagedPlanDetails() {
+    const plan = this.state.stagedPlan
+    if (!plan) return null
+    const validation = validateMatchPlan(this.state, plan.assignments)
+    return {
+      plan,
+      digest: plan.digest,
+      validation,
+      validationStatus: validation.valid ? 'valid' : 'invalid',
+      approvalStatus:
+        plan.status === 'committed'
+          ? 'consumed'
+          : plan.approval
+            ? 'approved'
+            : 'pending',
+      createdAt: plan.createdAt,
+      sourceRevision: plan.sourceRevision,
+      currentRevision: this.state.resourceRevision,
+      stale:
+        plan.status !== 'committed' &&
+        plan.sourceRevision !== this.state.resourceRevision,
+    }
   }
 
   async stagePlan(
@@ -282,7 +347,7 @@ export class CoordinationStore {
         actor,
         'stage_match_plan',
         `Staged ${plan.id} for human review`,
-        `${validation.summary.needsFullyCovered} ${validation.summary.needsFullyCovered === 1 ? 'need' : 'needs'} · ${validation.summary.assignmentCount} ${validation.summary.assignmentCount === 1 ? 'assignment' : 'assignments'} · ${validation.summary.totalTravelKm} km`,
+        `${validation.coverage.needsFullyCovered}/${validation.coverage.needsTotal} needs projected covered · ${validation.summary.assignmentCount} ${validation.summary.assignmentCount === 1 ? 'assignment' : 'assignments'} · ${validation.summary.totalTravelKm} km`,
       ),
     })
 
@@ -299,7 +364,7 @@ export class CoordinationStore {
     const intent =
       getCoordinationSnapshot(this.state).totals.disrupted > 0
         ? 'Repair only disrupted needs while preserving working assignments'
-        : 'Cover every open Riverlight Community Day need with low travel and no overbooking'
+        : 'Cover every open Saturday Community Day need with low travel and no overbooking'
     return this.stagePlan(assignments, intent, actor)
   }
 
@@ -366,6 +431,59 @@ export class CoordinationStore {
       ok: true,
       data: approved,
       nextAction: 'The agent may now commit this exact approved digest.',
+    }
+  }
+
+  rejectStagedPlan(
+    digest: string,
+  ): ToolResult<{ rejectedPlanId: string; rejectedDigest: string }> {
+    const stagedPlan = this.state.stagedPlan
+    if (!stagedPlan) {
+      return {
+        ok: false,
+        error: {
+          code: 'NO_STAGED_PLAN',
+          message: 'There is no staged plan to reject.',
+        },
+      }
+    }
+    if (stagedPlan.status === 'committed') {
+      return {
+        ok: false,
+        error: {
+          code: 'PLAN_ALREADY_COMMITTED',
+          message: `${stagedPlan.id} has already been committed.`,
+        },
+      }
+    }
+    if (stagedPlan.digest !== digest) {
+      return {
+        ok: false,
+        error: {
+          code: 'DIGEST_MISMATCH',
+          message: 'Rejection must target the exact plan shown in the UI.',
+        },
+      }
+    }
+
+    this.publish({
+      ...this.state,
+      stagedPlan: null,
+      activity: this.activity(
+        this.state,
+        'human',
+        'reject_plan',
+        `Rejected ${stagedPlan.id} in the UI`,
+        `${digest.slice(0, 22)}… · no assignments changed`,
+      ),
+    })
+    return {
+      ok: true,
+      data: {
+        rejectedPlanId: stagedPlan.id,
+        rejectedDigest: stagedPlan.digest,
+      },
+      nextAction: 'The agent may inspect feedback and stage a new exact plan.',
     }
   }
 
@@ -514,7 +632,8 @@ export class CoordinationStore {
         },
       } satisfies ToolResult<null>
     }
-    if (resource.unavailable === unavailable) {
+    const currentlyUnavailable = resource.availability.status === 'unavailable'
+    if (currentlyUnavailable === unavailable) {
       return {
         ok: true,
         data: resource,
@@ -522,8 +641,19 @@ export class CoordinationStore {
       } satisfies ToolResult<typeof resource>
     }
 
+    const availabilityStatus: 'available' | 'unavailable' = unavailable
+      ? 'unavailable'
+      : 'available'
     const resources = this.state.resources.map((candidate) =>
-      candidate.id === resourceId ? { ...candidate, unavailable } : candidate,
+      candidate.id === resourceId
+        ? {
+            ...candidate,
+            availability: {
+              ...candidate.availability,
+              status: availabilityStatus,
+            },
+          }
+        : candidate,
     )
     this.publish({
       ...this.state,

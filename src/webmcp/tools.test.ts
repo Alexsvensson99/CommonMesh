@@ -58,16 +58,26 @@ describe('CommonMesh WebMCP tools', () => {
 
     expect(await byName(tools, 'get_coordination_snapshot').execute({})).toMatchObject({
       ok: true,
+      data: {
+        coveragePercent: 0,
+        currentAssignments: [],
+        resourceSummary: { total: 15, available: 15 },
+      },
     })
     expect(
       await byName(tools, 'search_needs').execute({ status: 'open' }),
-    ).toMatchObject({ ok: true, data: { count: 6 } })
+    ).toMatchObject({ ok: true, data: { count: 7 } })
     expect(
       await byName(tools, 'search_resources').execute({
         needId: 'need-van',
+        type: 'transport',
+        minCapacity: 1,
         maxDistanceKm: 10,
+        date: '2026-09-05',
+        start: '2026-09-05T08:15:00+02:00',
+        end: '2026-09-05T10:15:00+02:00',
       }),
-    ).toMatchObject({ ok: true })
+    ).toMatchObject({ ok: true, data: { count: 2 } })
     expect(
       await byName(tools, 'get_resource_details').execute({
         resourceId: 'res-northside-van',
@@ -86,7 +96,12 @@ describe('CommonMesh WebMCP tools', () => {
 
     expect(await byName(tools, 'get_staged_plan').execute({})).toMatchObject({
       ok: true,
-      data: { digest: staged.data.digest, status: 'staged' },
+      data: {
+        digest: staged.data.digest,
+        validationStatus: 'valid',
+        approvalStatus: 'pending',
+        plan: { status: 'staged' },
+      },
     })
 
     expect(
