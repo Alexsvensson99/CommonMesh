@@ -53,6 +53,17 @@ describe('CommonMesh WebMCP tools', () => {
       readOnlyHint: true,
       untrustedContentHint: true,
     })
+    expect(byName(tools, 'commit_approved_plan').annotations).toMatchObject({
+      readOnlyHint: false,
+      untrustedContentHint: true,
+    })
+    expect(
+      byName(tools, 'validate_match_plan').inputSchema.properties?.assignments
+        .items?.properties?.start.format,
+    ).toBe('date-time')
+    expect(
+      byName(tools, 'search_resources').inputSchema.properties?.end.format,
+    ).toBe('date-time')
     expect(names).not.toContain('approve_staged_plan')
 
     const catalogue = getCommonMeshToolCatalogue(makeStore())
@@ -135,7 +146,9 @@ describe('CommonMesh WebMCP tools', () => {
   })
 
   it('returns structured errors for malformed and unknown inputs', async () => {
-    const tools = createCommonMeshTools(makeStore())
+    const store = makeStore()
+    const tools = createCommonMeshTools(store)
+    const assignments = buildRecommendedAssignments(store.getState())
 
     expect(await byName(tools, 'stage_match_plan').execute({ intent: 'No plan' })).toMatchObject(
       { ok: false, error: { code: 'INVALID_INPUT' } },
@@ -150,6 +163,20 @@ describe('CommonMesh WebMCP tools', () => {
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
     expect(
       await byName(tools, 'search_needs').execute({ unexpected: true }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
+    expect(
+      await byName(tools, 'search_resources').execute({
+        start: '09/05/2026 08:00',
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
+    expect(
+      await byName(tools, 'validate_match_plan').execute({
+        assignments: assignments.map((assignment, index) =>
+          index === 0
+            ? { ...assignment, start: '2026-02-31T08:00:00+02:00' }
+            : assignment,
+        ),
+      }),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
   })
 

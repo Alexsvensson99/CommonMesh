@@ -5,6 +5,7 @@ import type {
   PlanValidationResult,
   ToolResult,
 } from '../domain/types'
+import { isIso8601Timestamp } from '../domain/coordination'
 import type {
   CoordinationStore,
   NeedSearch,
@@ -52,11 +53,13 @@ const assignmentSchema: JsonSchema = {
       type: 'string',
       description: 'ISO 8601 assignment start timestamp.',
       maxLength: MAX_TIMESTAMP_LENGTH,
+      format: 'date-time',
     },
     end: {
       type: 'string',
       description: 'ISO 8601 assignment end timestamp.',
       maxLength: MAX_TIMESTAMP_LENGTH,
+      format: 'date-time',
     },
   },
   required: ['needId', 'resourceId', 'quantity', 'start', 'end'],
@@ -150,12 +153,29 @@ function parseAssignments(input: unknown): AssignmentInput[] {
         `assignments[${index}].quantity must be a finite number.`,
       )
     }
+    const start = stringField(candidate, 'start', true, MAX_TIMESTAMP_LENGTH)!
+    const end = stringField(candidate, 'end', true, MAX_TIMESTAMP_LENGTH)!
+    if (!isIso8601Timestamp(start)) {
+      throw new ToolInputError(
+        `assignments[${index}].start must be an ISO 8601 timestamp with a timezone.`,
+      )
+    }
+    if (!isIso8601Timestamp(end)) {
+      throw new ToolInputError(
+        `assignments[${index}].end must be an ISO 8601 timestamp with a timezone.`,
+      )
+    }
+    if (Date.parse(start) >= Date.parse(end)) {
+      throw new ToolInputError(
+        `assignments[${index}].end must be after start.`,
+      )
+    }
     return {
       needId: stringField(candidate, 'needId', true, MAX_ID_LENGTH)!,
       resourceId: stringField(candidate, 'resourceId', true, MAX_ID_LENGTH)!,
       quantity,
-      start: stringField(candidate, 'start', true, MAX_TIMESTAMP_LENGTH)!,
-      end: stringField(candidate, 'end', true, MAX_TIMESTAMP_LENGTH)!,
+      start,
+      end,
     }
   })
 }
@@ -224,11 +244,15 @@ function parseResourceSearch(input: unknown): ResourceSearch {
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new ToolInputError('date must use YYYY-MM-DD format.')
   }
-  if (start && !Number.isFinite(Date.parse(start))) {
-    throw new ToolInputError('start must be an ISO 8601 timestamp.')
+  if (start && !isIso8601Timestamp(start)) {
+    throw new ToolInputError(
+      'start must be an ISO 8601 timestamp with a timezone.',
+    )
   }
-  if (end && !Number.isFinite(Date.parse(end))) {
-    throw new ToolInputError('end must be an ISO 8601 timestamp.')
+  if (end && !isIso8601Timestamp(end)) {
+    throw new ToolInputError(
+      'end must be an ISO 8601 timestamp with a timezone.',
+    )
   }
   if (start && end && Date.parse(start) >= Date.parse(end)) {
     throw new ToolInputError('end must be after start.')
@@ -678,11 +702,13 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             type: 'string',
             description: 'Required ISO 8601 availability start.',
             maxLength: MAX_TIMESTAMP_LENGTH,
+            format: 'date-time',
           },
           end: {
             type: 'string',
             description: 'Required ISO 8601 availability end.',
             maxLength: MAX_TIMESTAMP_LENGTH,
+            format: 'date-time',
           },
           offset: {
             type: 'number',
@@ -940,7 +966,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
         },
         required: ['digest'],
       },
-      annotations: { readOnlyHint: false },
+      annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: (input, context) =>
         guardedWrite(store, 'commit_approved_plan', async () => {
           const record = objectInput(input, ['digest'])

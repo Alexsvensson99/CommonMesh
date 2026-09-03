@@ -5,6 +5,7 @@ import {
   getCoordinationSnapshot,
   getNeedStatus,
   getResourceConstraints,
+  isIso8601Timestamp,
   normalizeAssignments,
   validateMatchPlan,
   validateStagedPlan,
@@ -33,6 +34,11 @@ type PlanDigestFactory = typeof createPlanDigest
 const activityOutcomes: ActivityOutcome[] = ['success', 'failed', 'info']
 const splittableUnits = new Set(['chairs', 'people', 'portions'])
 
+const parseTimestamp = (value: unknown) =>
+  typeof value === 'string' && isIso8601Timestamp(value)
+    ? Date.parse(value)
+    : Number.NaN
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -53,8 +59,8 @@ function isBoundedSerializedString(
 }
 
 function isAssignment(value: unknown): value is AssignmentInput {
-  const start = isRecord(value) ? Date.parse(String(value.start)) : Number.NaN
-  const end = isRecord(value) ? Date.parse(String(value.end)) : Number.NaN
+  const start = isRecord(value) ? parseTimestamp(value.start) : Number.NaN
+  const end = isRecord(value) ? parseTimestamp(value.end) : Number.NaN
   return (
     isRecord(value) &&
     typeof value.needId === 'string' &&
@@ -77,13 +83,15 @@ function isCommittedAssignment(
     isAssignment(value) &&
     isRecord(value) &&
     typeof (value as Record<string, unknown>).planId === 'string' &&
-    typeof (value as Record<string, unknown>).committedAt === 'string'
+    Number.isFinite(
+      parseTimestamp((value as Record<string, unknown>).committedAt),
+    )
   )
 }
 
 function isNeed(value: unknown): value is CoordinationState['needs'][number] {
-  const start = isRecord(value) ? Date.parse(String(value.start)) : Number.NaN
-  const end = isRecord(value) ? Date.parse(String(value.end)) : Number.NaN
+  const start = isRecord(value) ? parseTimestamp(value.start) : Number.NaN
+  const end = isRecord(value) ? parseTimestamp(value.end) : Number.NaN
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
@@ -114,11 +122,11 @@ function isResource(
 ): value is CoordinationState['resources'][number] {
   const availabilityStart =
     isRecord(value) && isRecord(value.availability)
-      ? Date.parse(String(value.availability.start))
+      ? parseTimestamp(value.availability.start)
       : Number.NaN
   const availabilityEnd =
     isRecord(value) && isRecord(value.availability)
-      ? Date.parse(String(value.availability.end))
+      ? parseTimestamp(value.availability.end)
       : Number.NaN
   return (
     isRecord(value) &&
@@ -162,7 +170,7 @@ function isActivity(
     activityOutcomes.includes(value.outcome as ActivityOutcome) &&
     typeof value.action === 'string' &&
     typeof value.summary === 'string' &&
-    typeof value.timestamp === 'string' &&
+    Number.isFinite(parseTimestamp(value.timestamp)) &&
     (value.detail === undefined || typeof value.detail === 'string')
   )
 }
@@ -177,7 +185,7 @@ function isStagedPlan(value: unknown): value is StagedPlan | null {
     isBoundedSerializedString(value.intent, MAX_PLAN_INTENT_LENGTH) &&
     Number.isInteger(value.sourceRevision) &&
     Number(value.sourceRevision) >= 0 &&
-    typeof value.createdAt === 'string' &&
+    Number.isFinite(parseTimestamp(value.createdAt)) &&
     (value.proposedBy === 'agent' || value.proposedBy === 'human') &&
     (value.status === 'staged' ||
       value.status === 'approved' ||
@@ -188,7 +196,7 @@ function isStagedPlan(value: unknown): value is StagedPlan | null {
     (value.approval === null ||
       (isRecord(value.approval) &&
         typeof value.approval.digest === 'string' &&
-        typeof value.approval.approvedAt === 'string' &&
+        Number.isFinite(parseTimestamp(value.approval.approvedAt)) &&
         value.approval.approvedBy === 'human-ui'))
   if (!structurallyValid || !isRecord(value)) return false
   if (value.status === 'staged') return value.approval === null
@@ -203,7 +211,7 @@ function isUndoFrame(
     isRecord(value) &&
     typeof value.planId === 'string' &&
     typeof value.digest === 'string' &&
-    typeof value.createdAt === 'string' &&
+    Number.isFinite(parseTimestamp(value.createdAt)) &&
     Array.isArray(value.previousAssignments) &&
     value.previousAssignments.every(isCommittedAssignment)
   )

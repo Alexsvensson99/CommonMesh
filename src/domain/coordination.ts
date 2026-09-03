@@ -19,7 +19,42 @@ const round = (value: number, places = 1) => {
   return Math.round((value + Number.EPSILON) * power) / power
 }
 
-const toTime = (value: string) => Date.parse(value)
+const ISO_8601_TIMESTAMP =
+  /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/
+
+export function isIso8601Timestamp(value: string) {
+  const match = ISO_8601_TIMESTAMP.exec(value)
+  if (!match) return false
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (month < 1 || month > 12) return false
+
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const daysInMonth = [
+    31,
+    leapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ]
+  return (
+    day >= 1 &&
+    day <= daysInMonth[month - 1] &&
+    Number.isFinite(Date.parse(value))
+  )
+}
+
+const toTime = (value: string) =>
+  isIso8601Timestamp(value) ? Date.parse(value) : Number.NaN
 
 const durationHours = (start: string, end: string) =>
   (toTime(end) - toTime(start)) / 3_600_000

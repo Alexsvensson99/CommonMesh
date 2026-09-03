@@ -366,6 +366,23 @@ describe('CoordinationStore search and approval boundary', () => {
     expect(store.getState().committedAssignments).toEqual([])
   })
 
+  it('rejects non-ISO timestamps from persisted browser state', () => {
+    const state = createSeedState()
+    state.needs[0].start = '09/05/2026 08:00'
+    const storage = {
+      getItem: () => JSON.stringify(state),
+      setItem: () => undefined,
+    }
+
+    const store = new CoordinationStore({ storage, now: fixedNow })
+
+    expect(store.getState().needs[0].start).toBe('2026-09-05T08:00:00+02:00')
+    expect(store.getSnapshot()).toMatchObject({
+      revision: 1,
+      totals: { needs: 7, resources: 15 },
+    })
+  })
+
   it('keeps the existing state when reset cannot be persisted', async () => {
     let stored: string | null = null
     let rejectWrites = false

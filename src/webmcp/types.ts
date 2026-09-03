@@ -9,6 +9,7 @@ export type JsonSchema = {
   maximum?: number
   maxItems?: number
   maxLength?: number
+  format?: string
   additionalProperties?: boolean
 }
 

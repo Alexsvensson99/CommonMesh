@@ -4,6 +4,8 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 
 **Built for the 2026 WebMCP Challenge.**
 
+[![CI](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml)
+
 CommonMesh is a React application where a browser agent can discover community needs, compare constrained resources, validate a complete match plan, stage it for review, and—only after explicit human approval—commit the exact approved proposal. The product is not a chatbot: CommonMesh owns the state, rules, tools, approval gate, and visible audit trail.
 
 ## Screenshots
@@ -21,6 +23,13 @@ gates.
 **Approved repair committed — full coverage restored**
 
 ![Committed repair with 100% live coverage](docs/screenshots/05-committed-plan.jpg)
+
+<details>
+<summary>Compact mobile overview</summary>
+
+![CommonMesh responsive overview at 500 pixels](docs/screenshots/06-mobile-overview.png)
+
+</details>
 
 ## Why CommonMesh?
 
@@ -173,6 +182,8 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+The same four checks run on every push and pull request through GitHub Actions.
 
 The suite covers search, partial contribution signals, capacity, skills, time
 windows, distance, maximum hours, overbooking, deterministic digests, staging,
