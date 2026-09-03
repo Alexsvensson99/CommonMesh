@@ -5,7 +5,7 @@
 ## Recording setup
 
 - Record in ChatGPT's in-app browser or a compatible Chrome build with the CommonMesh app and agent conversation both visible when practical.
-- Use the deployed URL only after it has been opened and verified. Until then use the local Vite URL printed by `npm run dev`.
+- Use the verified public build at [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site).
 - Hide notifications, account details, tokens, unrelated tabs, and developer secrets.
 - Keep browser zoom and capture framing large enough to read status labels, metrics, the digest state, and structured tool errors.
 - Do not use **Stage sample plan** or **Stage repair** during the recorded agent path. Those are human demo shortcuts; the recording should show the agent staging through WebMCP.
@@ -177,4 +177,3 @@ Before uploading:
 - [ ] Confirm the video has clear English narration or accurate English captions.
 - [ ] Upload the video, test public playback in a signed-out session, and replace **[PLACEHOLDER — video URL]** in both submission documents.
 - [ ] After preserving the committed end-state shot, use **Reset Demo** and verify the start checkpoint before another take.
-

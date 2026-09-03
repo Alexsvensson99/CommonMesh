@@ -11,6 +11,11 @@ commit, disruption, selective repair, and a second commit. This verifies the
 application contract through the browser; a recorded single-prompt model
 rehearsal remains a separate submission gate.
 
+The [public build](https://commonmesh.itsjustmeal3x.chatgpt.site) was also opened
+in the WebMCP-capable in-app browser on 2026-09-03. All nine tools registered,
+and the hosted human staging, approval-without-execution, and reset states were
+verified directly.
+
 | Scenario | Expected WebMCP behavior | Required invariant | Evidence |
 | --- | --- | --- | --- |
 | Discover the workspace | Call `get_coordination_snapshot`, then page through needs and compatible resources | Read calls do not mutate state or write localStorage | Automated tool tests; in-app browser verified 2026-09-03 |

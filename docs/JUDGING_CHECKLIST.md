@@ -49,11 +49,11 @@ Official question: is this a working, runnable project with a complete and coher
 
 ### Current limitation
 
-The project is a client-side deterministic demo. The repository includes local product-state captures through a committed repair, but a publicly accessible hosted build and submission video remain separate submission gates.
+The project is a client-side deterministic demo. A public build and local product-state captures through a committed repair are available, but the submission video remains a separate gate.
 
 ### Assessment
 
-Strong local execution, subject to providing judges a working hosted or packaged test link as required by the official rules.
+Strong execution evidence across the public build, local captures, automated tests, and verified WebMCP transport. The final submission still needs a concise recording of the complete judge workflow.
 
 ## 3. Potential Impact
 
@@ -100,8 +100,10 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
-- The repository should be paired with a verified public demo link and a concise browser-agent video before submission readiness is claimed.
+- The repository is paired with a verified public demo; a concise browser-agent video is still required before submission readiness is claimed.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
+
+Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)
 
 ## Primary references
 

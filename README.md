@@ -6,13 +6,15 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 
 [![CI](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml)
 
+**[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)**
+
 CommonMesh is a React application where a browser agent can discover community needs, compare constrained resources, validate a complete match plan, stage it for review, and—only after explicit human approval—commit the exact approved proposal. The product is not a chatbot: CommonMesh owns the state, rules, tools, approval gate, and visible audit trail.
 
 ## Screenshots
 
-These local product-state captures show the deterministic judging flow. A
-verified hosted URL and live browser-agent recording remain separate submission
-gates.
+These local product-state captures show the deterministic judging flow. The
+public build is live; the final browser-agent recording remains a separate
+submission gate.
 
 | Coordination overview | Plan review |
 | --- | --- |
@@ -155,6 +157,9 @@ availability, and reset are visible human controls.
 This client-side competition demo proves the interaction and authorization model inside one browser session. It is not a production identity or multi-user authorization system; those require a server-side trust boundary.
 
 ## Running Locally
+
+The verified public build is available at
+[commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site).
 
 Requirements: Node.js 20.19+ or 22.12+ and npm.
 

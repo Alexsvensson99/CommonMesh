@@ -1,6 +1,6 @@
 # CommonMesh — Submission Draft
 
-> **Draft status:** Prepared from the current repository on 2026-09-03. Nothing has been sent to Devpost. Official form fields, current rules, the public demo URL, and the final video URL must be verified before submission.
+> **Draft status:** Prepared from the current repository on 2026-09-03. Nothing has been sent to Devpost. The repository and public demo are verified; official form fields, current rules, and the final video URL remain open gates.
 
 ## Title
 
@@ -155,7 +155,7 @@ The category names below follow the repository's current judging checklist. Re-c
 | Category | Strongest repository evidence | Honest boundary |
 | --- | --- | --- |
 | **WebMCP Leverage** | Nine purpose-built tools carry the full inspect -> search -> validate -> stage -> approve -> commit -> audit workflow; schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
-| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, local screenshots, automated domain/store/tool tests, and a documented live WebMCP transport run | A verified public demo URL and final recorded demo remain open gates |
+| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local screenshots, automated domain/store/tool tests, and documented live WebMCP transport | The final recorded demo remains an open gate |
 | **Potential Impact** | A specific organizer audience, realistic cross-category constraints, inspectable actions, and continuity through selective repair | No production deployment, user research, adoption, or outcome metrics are claimed |
 | **Creativity & Ambition** | The website is an agent-capable coordination system rather than a chatbot; exact-digest governance and surgical recovery are part of the domain model | Matching, volunteer platforms, and approval workflows are not claimed as individually novel |
 
@@ -184,7 +184,7 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 ## Links
 
 - **Repository:** [github.com/Alexsvensson99/CommonMesh](https://github.com/Alexsvensson99/CommonMesh) — verified public on 2026-09-03.
-- **Public demo:** **[PLACEHOLDER — deploy, open in the judge environment, and insert the verified public URL]**
+- **Public demo:** [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site) — verified in the WebMCP-capable in-app browser on 2026-09-03.
 - **Demo video:** **[PLACEHOLDER — record the verified 2–3 minute flow, upload it, and insert the public video URL]**
 - **Challenge page:** [webmcp.devpost.com](https://webmcp.devpost.com/)
 - **License:** [MIT](../LICENSE)
@@ -195,7 +195,7 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 
 ## Known limitations
 
-- Client-side, single-browser prototype; no production server trust boundary.
+- Client-side, single-browser prototype; the public static demo has no production server trust boundary.
 - Browser persistence is local to one origin and browser profile.
 - Live WebMCP execution depends on ChatGPT's in-app browser or a compatible Chrome build.
 - Seeded data is deterministic demonstration data, not a live community directory.
@@ -209,11 +209,11 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 - [x] Include the configured repository remote without claiming its public visibility was verified.
 - [ ] **Verify the current official rules, eligibility, deadline, judging wording, and exact form fields on Devpost.**
 - [x] Verify that the repository is publicly accessible without authentication.
-- [ ] **Deploy and verify a free, unrestricted public demo in the actual judge environment.**
-- [ ] **Run the complete quality gate on the exact commit intended for submission and record the result.**
+- [x] Deploy and verify a free, unrestricted public demo in the WebMCP-capable browser.
+- [x] Run the complete quality gate on the deployed source commit: lint, typecheck, 40 tests, and production build all pass.
 - [ ] **Rehearse and record the real browser-agent flow from the mission prompt.**
 - [ ] **Upload the video, verify public playback, and replace the video placeholder.**
-- [ ] **Replace the public demo placeholder only after opening the deployed URL and completing the critical flow.**
+- [x] Replace the public demo placeholder after opening the deployed URL and checking registration, staging, approval-without-execution, and reset.
 - [ ] **Confirm the factual build-process/AI-assistance disclosure if the form asks for it.**
 - [ ] **Copy only fields actually requested by the live form; leave no placeholders in the final entry.**
 
