@@ -6,11 +6,12 @@
 > a second source of submission-field values.
 >
 > **Current status:** The Devpost project page is populated, but the WebMCP
-> Challenge entry has not been submitted. A 2:50 hybrid demo candidate has
-> passed technical and independent visual QA locally. Explicit upload approval,
-> verified public playback and URL, four personal-answer
-> confirmations, final CI/deployment correlation, and an explicit **yes,
-> submit** remain open gates.
+> Challenge entry has not been submitted. The technically and independently
+> validated 2:50 demo is public at
+> [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk), with HD processing
+> complete and manual English captions published. Adding the URL to Devpost,
+> four personal-answer confirmations, final CI/deployment correlation, and an
+> explicit **yes, submit** remain open gates.
 
 ## Title
 
@@ -43,7 +44,7 @@ PROPOSED -> APPROVED -> COMMITTED
             human       agent
 ```
 
-The agent may propose a plan, but it may execute only after the human approves that exact digest. The agent has no approval, resource-availability, reset, or undo tool. The visible human interface alone can approve the exact digest or change demo resource availability.
+The agent may propose a plan, but it may execute only after the human approves that exact digest. The agent has no approval, resource-availability, or reset tool. The visible human interface alone can approve the exact digest or change demo resource availability. Persisted approval is intentionally not trusted after a reload, so the proposal returns to PROPOSED and requires fresh human approval.
 
 ## What the demo does
 
@@ -172,7 +173,7 @@ The category names below match the four equally weighted criteria fetched from t
 | Category | Strongest repository evidence | Honest boundary |
 | --- | --- | --- |
 | **WebMCP Leverage** | Nine purpose-built tools carry inspect -> search -> validate -> stage -> read -> commit -> audit; the separate human UI supplies exact-digest approval. Schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
-| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local product-state evidence, automated domain/store/tool tests, a documented end-to-end run through the public WebMCP transport, and an independently validated 2:50 hybrid demo candidate | Explicit upload approval and verified public playback remain open gates |
+| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local product-state evidence, automated domain/store/tool tests, a documented end-to-end run through the public WebMCP transport, and a public independently validated 2:50 hybrid demo | The video is one curated demonstrated run, not a benchmark of arbitrary model behavior |
 | **Potential Impact** | A specific organizer audience, realistic cross-category constraints, inspectable actions, and continuity through selective repair | No production deployment, user research, adoption, or outcome metrics are claimed |
 | **Creativity & Ambition** | The website is an agent-capable coordination system rather than a chatbot; exact-digest governance and surgical recovery are part of the domain model | Matching, volunteer platforms, and approval workflows are not claimed as individually novel |
 
@@ -203,10 +204,11 @@ copy and timestamp refinements.
 
 - **Repository:** [github.com/Alexsvensson99/CommonMesh](https://github.com/Alexsvensson99/CommonMesh) — verified public on 2026-09-03.
 - **Public demo:** [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site) — the full WebMCP workflow and persisted reset were verified in the in-app browser on 2026-09-03.
-- **Demo video:** Public URL pending explicit upload approval and signed-out
-  playback verification. Exact local upload copy (git-ignored):
-  `video/commonmesh-demo-final.mp4`, 2:50, SHA-256
-  `331fe8211a7f5d318cfc5f48d1ed95731e569bafedcc183307ce72ebebf21d1b`.
+- **Demo video:** [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk) — public,
+  HD complete, and published with a manual English caption track. Exact local
+  upload copy (git-ignored): `video/commonmesh-demo-eric-v2-candidate.mp4`,
+  2:50, SHA-256
+  `36a9868d6c6047b8b18e4886af8d113946b9be1d13d0bacc8125a42d01ffd58f`.
 - **Challenge page:** [webmcp.devpost.com](https://webmcp.devpost.com/)
 - **License:** [MIT](../LICENSE)
 
@@ -229,8 +231,8 @@ entry.
 - Seeded data is deterministic demonstration data, not a live community directory.
 - No real organization, user study, time-saving measurement, or adoption result is claimed.
 - The repository documents an end-to-end public tool-transport run and the exact
-  rendered hybrid video candidate. The exact file passed independent Ultra
-  visual QA, but is not yet uploaded or publicly linked.
+  public hybrid video. The uploaded file passed independent Ultra visual QA;
+  its manual English caption track is published.
 
 ## Submission readiness checklist
 
@@ -240,11 +242,11 @@ entry.
 - [x] Verify the current official rules, eligibility, deadline, judging wording, and exact form fields on Devpost (completed 2026-09-03).
 - [x] Verify that the repository is publicly accessible without authentication.
 - [x] Deploy and verify a free, unrestricted public demo in the WebMCP-capable browser.
-- [x] Current automated suite passes: 53/53 tests.
+- [x] Current automated suite passes: 57/57 tests.
 - [x] Render and technically validate the 170-second hybrid candidate, including genuine WebMCP staging and approval-boundary footage.
 - [x] **Independent Ultra visual QA passed on the exact rendered candidate.**
-- [ ] **Obtain explicit approval for the exact upload manifest.**
-- [ ] **Upload the approved video, wait for HD processing, verify signed-out public playback, and add the exact URL everywhere.**
+- [x] **Obtain explicit approval for the exact upload manifest.**
+- [x] **Upload the approved video, complete HD processing, publish the manual English captions, and verify public availability.**
 - [x] Verify the full public transport flow: discovery, validation, staging, blocked commit, approval, commit, failure, selective repair, second commit, activity, and persisted reset.
 - [x] Prepare factual answers for the live form's agent/client and AI-tool questions.
 - [ ] **Run the complete final quality gate, commit and push, verify CI, and correlate the final deployed assets.**
@@ -254,7 +256,7 @@ entry.
 
 The live Devpost form was queried on 2026-09-03. Technical answers are prepared in the root [`devpost-submission.md`](../devpost-submission.md); the following gates remain:
 
-- **Public video:** obtain explicit upload approval, upload the exact certified candidate, and add its URL only after signed-out playback testing.
+- **Public video field:** add `https://youtu.be/7Oy3g2_-LRk` to the live Devpost project and read it back before submission.
 - **Submitter Type:** confirm `Individual`.
 - **Country(s):** confirm `Sweden`.
 - **Learning:** confirm `Significant`.

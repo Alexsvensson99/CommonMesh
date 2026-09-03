@@ -106,7 +106,7 @@ export type ActivityLogEntry = {
 
 export type ActivityEntry = ActivityLogEntry
 
-export type UndoFrame = {
+export type CommitFrame = {
   planId: string
   digest: string
   previousAssignments: CommittedAssignment[]
@@ -125,7 +125,7 @@ export type CoordinationState = {
   committedAssignments: CommittedAssignment[]
   stagedPlan: StagedPlan | null
   activity: ActivityEntry[]
-  lastCommit: UndoFrame | null
+  lastCommit: CommitFrame | null
 }
 
 export type PlanValidationIssue = {

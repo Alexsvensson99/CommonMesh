@@ -6,7 +6,8 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 
 [![CI](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml)
 
-**[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)**
+**[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)** ·
+**[Watch the 2:50 WebMCP Challenge demo](https://youtu.be/7Oy3g2_-LRk)**
 
 Use ChatGPT's in-app browser or a WebMCP-compatible Chrome build for live
 agent tools. Other modern browsers can inspect the dashboard and use the
@@ -22,17 +23,17 @@ and deliberately no agent approval tool.
 
 ![Nine live WebMCP tools with seven read and two write capabilities](docs/screenshots/07-webmcp-tools-live.jpg)
 
-This exact frame from 2:38 in the final local video candidate shows the repaired
+This exact frame from 2:38 in the published challenge video shows the repaired
 plan committed through the live nine-tool WebMCP surface, with 7/7 needs covered
 and 100% coordination coverage.
 
 ![Committed selective repair with WebMCP live and 100% coordination coverage](docs/screenshots/10-final-committed-repair.png)
 
-A 2:50 hybrid demo candidate combines genuine WebMCP staging and
+A public 2:50 hybrid demo combines genuine WebMCP staging and
 approval-boundary footage with verified product-state captures so the
 PROPOSED, APPROVED, COMMITTED, disruption, and repair states remain legible. It
-has passed technical and independent visual QA; explicit upload approval,
-public YouTube playback, and the final video URL remain open gates.
+passed technical, caption, and independent visual QA and is published with a
+manual English caption track.
 
 ## Why CommonMesh?
 
@@ -135,7 +136,7 @@ Every input schema sets `additionalProperties: false`. Runtime parsing and domai
 Read tools use `readOnlyHint` and never mutate or persist state. Results are
 compact, and list-heavy results are paginated to keep agent context focused. Tools returning
 community-authored text use `untrustedContentHint`. CommonMesh exposes no
-WebMCP approval, resource-availability, reset, or undo tool; those human demo
+WebMCP approval, resource-availability, or reset tool; those human demo
 capabilities remain outside the agent authority boundary. Approval, resource
 availability, and reset are visible human controls.
 
@@ -145,6 +146,7 @@ availability, and reset are visible human controls.
 - The approval digest binds the exact assignments to the current coordination revision.
 - Only the visible human UI can create an approval record.
 - Staging a changed plan removes any previous approval.
+- Approval is intentionally session-bound: a page reload returns an approved proposal to PROPOSED and requires fresh human approval.
 - Changing resource state invalidates a pending approval and makes the proposal stale.
 - Commit recomputes the digest and revalidates the complete plan immediately before mutation.
 - Policy and validation failures—including unapproved, stale, mismatched, invalid, consumed, or superseded operations—return structured errors and appear as blocked activity while storage is available.
@@ -200,8 +202,8 @@ The suite covers search, partial contribution signals, capacity, skills, time
 windows, distance, maximum hours, overbooking, deterministic digests, staging,
 strict tool input, cancellation, read purity, bounded tool output, exact-digest
 approval, digest-tamper rejection, stale-state invalidation, approval
-consumption, commit cancellation, selective repair, repair impact metrics, undo,
-persisted lifecycle integrity, transactional storage failures, escaped-input
+consumption, commit cancellation, selective repair, repair impact metrics,
+persisted lifecycle integrity, approval expiry on reload, transactional storage failures, escaped-input
 output budgets, and all WebMCP registrations.
 
 See [`docs/WEBMCP_EVALS.md`](docs/WEBMCP_EVALS.md) for the repeatable tool-flow

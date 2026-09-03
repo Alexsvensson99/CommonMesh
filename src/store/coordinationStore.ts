@@ -214,7 +214,7 @@ function isStagedPlan(value: unknown): value is StagedPlan | null {
   return isRecord(value.approval) && value.approval.digest === value.digest
 }
 
-function isUndoFrame(
+function isCommitFrame(
   value: unknown,
 ): value is CoordinationState['lastCommit'] {
   if (value === null) return true
@@ -222,6 +222,7 @@ function isUndoFrame(
     isRecord(value) &&
     typeof value.planId === 'string' &&
     typeof value.digest === 'string' &&
+    /^sha256:[0-9a-f]{64}$/.test(value.digest) &&
     Number.isFinite(parseTimestamp(value.createdAt)) &&
     Array.isArray(value.previousAssignments) &&
     value.previousAssignments.every(isCommittedAssignment)
@@ -249,7 +250,7 @@ function isCoordinationState(value: unknown): value is CoordinationState {
     !isStagedPlan(value.stagedPlan) ||
     !Array.isArray(value.activity) ||
     !value.activity.every(isActivity) ||
-    !isUndoFrame(value.lastCommit)
+    !isCommitFrame(value.lastCommit)
   ) {
     return false
   }
@@ -272,6 +273,69 @@ function isCoordinationState(value: unknown): value is CoordinationState {
   )
   if (!assignmentsReferenceKnownEntities) return false
 
+  if (committedAssignments.length === 0) {
+    if (lastCommit || stagedPlan?.status === 'committed') return false
+  } else {
+    if (!lastCommit) return false
+
+    const isLatestCommit = (
+      assignment: CoordinationState['committedAssignments'][number],
+    ) =>
+      assignment.planId === lastCommit.planId &&
+      assignment.committedAt === lastCommit.createdAt
+    if (
+      committedAssignments.some(
+        (assignment) =>
+          assignment.planId === lastCommit.planId && !isLatestCommit(assignment),
+      )
+    ) {
+      return false
+    }
+
+    const latestAssignments = committedAssignments.filter(isLatestCommit)
+    if (latestAssignments.length === 0) return false
+    const replacedNeedIds = new Set(
+      latestAssignments.map((assignment) => assignment.needId),
+    )
+    const expectedPreserved = lastCommit.previousAssignments.filter(
+      (assignment) => !replacedNeedIds.has(assignment.needId),
+    )
+    const actualPreserved = committedAssignments.filter(
+      (assignment) => !isLatestCommit(assignment),
+    )
+    const committedAssignmentKey = (
+      assignment: CoordinationState['committedAssignments'][number],
+    ) =>
+      JSON.stringify([
+        assignment.needId,
+        assignment.resourceId,
+        assignment.quantity,
+        assignment.start,
+        assignment.end,
+        assignment.planId,
+        assignment.committedAt,
+      ])
+    const expectedPreservedKeys = expectedPreserved
+      .map(committedAssignmentKey)
+      .sort()
+    const actualPreservedKeys = actualPreserved
+      .map(committedAssignmentKey)
+      .sort()
+    if (
+      expectedPreservedKeys.length !== actualPreservedKeys.length ||
+      expectedPreservedKeys.some(
+        (assignment, index) => assignment !== actualPreservedKeys[index],
+      )
+    ) {
+      return false
+    }
+
+    const latestPairKeys = latestAssignments.map(
+      (assignment) => `${assignment.needId}\u0000${assignment.resourceId}`,
+    )
+    if (new Set(latestPairKeys).size !== latestPairKeys.length) return false
+  }
+
   if (stagedPlan?.status === 'committed') {
     if (
       !lastCommit ||
@@ -281,13 +345,13 @@ function isCoordinationState(value: unknown): value is CoordinationState {
       return false
     }
     const assignmentKey = (assignment: AssignmentInput) =>
-      [
+      JSON.stringify([
         assignment.needId,
         assignment.resourceId,
         assignment.quantity,
         assignment.start,
         assignment.end,
-      ].join('\u0000')
+      ])
     const stagedPairKeys = stagedPlan.assignments.map(
       (assignment) => `${assignment.needId}\u0000${assignment.resourceId}`,
     )
@@ -296,7 +360,11 @@ function isCoordinationState(value: unknown): value is CoordinationState {
       .map(assignmentKey)
       .sort()
     const committedForPlan = committedAssignments
-      .filter((assignment) => assignment.planId === stagedPlan.id)
+      .filter(
+        (assignment) =>
+          assignment.planId === stagedPlan.id &&
+          assignment.committedAt === lastCommit.createdAt,
+      )
       .map(assignmentKey)
       .sort()
     if (
@@ -359,6 +427,15 @@ function loadState(storage: StorageLike | null): CoordinationState {
     if (!isRecord(parsed) || !Array.isArray(parsed.activity)) {
       return createSeedState()
     }
+    const normalizedStagedPlan =
+      isRecord(parsed.stagedPlan) && !('proposedBy' in parsed.stagedPlan)
+        ? { ...parsed.stagedPlan, proposedBy: 'agent' }
+        : parsed.stagedPlan
+    const resumableStagedPlan =
+      isRecord(normalizedStagedPlan) &&
+      normalizedStagedPlan.status === 'approved'
+        ? { ...normalizedStagedPlan, status: 'staged', approval: null }
+        : normalizedStagedPlan
     const normalized = {
       ...parsed,
       activity: parsed.activity.map((entry) => ({
@@ -369,10 +446,7 @@ function loadState(storage: StorageLike | null): CoordinationState {
             ? entry.outcome
             : 'info',
       })),
-      stagedPlan:
-        isRecord(parsed.stagedPlan) && !('proposedBy' in parsed.stagedPlan)
-          ? { ...parsed.stagedPlan, proposedBy: 'agent' }
-          : parsed.stagedPlan,
+      stagedPlan: resumableStagedPlan,
     }
     return isCoordinationState(normalized) ? normalized : createSeedState()
   } catch {
@@ -1271,44 +1345,6 @@ export class CoordinationStore {
         ? 'Inspect disrupted needs and repair only the affected assignments.'
         : 'The resource is available for validation and planning.',
     } satisfies ToolResult<typeof resource>
-  }
-
-  undoLastCommit(): ToolResult<{ undonePlanId: string }> {
-    const frame = this.state.lastCommit
-    if (!frame) {
-      return this.failure(
-        'agent',
-        'undo_last_commit',
-        'Undo blocked because no commit is available',
-        {
-          code: 'NOTHING_TO_UNDO',
-          message: 'There is no committed plan available for undo.',
-        },
-      )
-    }
-
-    const persisted = this.publish({
-      ...this.state,
-      resourceRevision: this.state.resourceRevision + 1,
-      committedAssignments: structuredClone(frame.previousAssignments),
-      stagedPlan: null,
-      lastCommit: null,
-      activity: this.activity(
-        this.state,
-        'agent',
-        'undo_last_commit',
-        `Reversed ${frame.planId}`,
-        'The exact pre-commit assignment state was restored.',
-      ),
-    })
-    if (!persisted) {
-      return this.persistenceFailure<{ undonePlanId: string }>()
-    }
-    return {
-      ok: true,
-      data: { undonePlanId: frame.planId },
-      nextAction: 'Inspect the current snapshot before planning again.',
-    }
   }
 
   resetDemo() {

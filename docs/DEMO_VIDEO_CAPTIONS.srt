@@ -1,162 +1,162 @@
 1
-00:00:00,260 --> 00:00:06,995
+00:00:00,260 --> 00:00:06,841
 This is CommonMesh: a WebMCP-native
 workspace for community coordination.
 
 2
-00:00:06,995 --> 00:00:09,906
+00:00:06,841 --> 00:00:09,701
 We begin from a deterministic reset:
 
 3
-00:00:09,906 --> 00:00:16,546
+00:00:09,701 --> 00:00:16,546
 seven open needs, fifteen available
 resources, and no plan or commitments.
 
 4
-00:00:16,546 --> 00:00:23,851
+00:00:16,546 --> 00:00:22,291
 An organizer must reconcile quantities,
 skills, licences, schedules,
 
 5
-00:00:23,851 --> 00:00:26,440
+00:00:22,291 --> 00:00:24,680
 travel, and accessibility.
 
 6
-00:00:26,440 --> 00:00:29,708
+00:00:24,680 --> 00:00:27,705
 The agent handles that comparison work,
 
 7
-00:00:29,708 --> 00:00:35,251
+00:00:27,705 --> 00:00:35,251
 while CommonMesh keeps every real-world
 commitment visible and human-controlled.
 
 8
-00:00:35,251 --> 00:00:41,479
+00:00:35,251 --> 00:00:41,130
 Nine structured tools expose the domain
 directly: seven reads and two writes.
 
 9
-00:00:41,479 --> 00:00:46,719
+00:00:41,130 --> 00:00:45,869
 The agent can inspect, validate, stage,
 and commit.
 
 10
-00:00:46,719 --> 00:00:52,304
+00:00:45,869 --> 00:00:52,304
 But approval, reset, and
 resource availability remain human-only.
 
 11
-00:00:52,304 --> 00:00:57,105
+00:00:52,304 --> 00:00:56,508
 The agent reads stable identifiers
 and structured constraints
 
 12
-00:00:57,105 --> 00:00:59,362
+00:00:56,508 --> 00:00:58,888
 instead of guessing from pixels.
 
 13
-00:00:59,362 --> 00:01:06,791
+00:00:58,888 --> 00:01:04,390
 It validates the assignments, then
 stages—not executes—the proposal
 
 14
-00:01:06,791 --> 00:01:09,648
+00:01:04,390 --> 00:01:09,648
 through the same state store
 used by the interface.
 
 15
-00:01:09,648 --> 00:01:16,310
+00:01:09,648 --> 00:01:16,510
 The proposal covers every need and exposes
 its assignments, metrics, revision,
 
 16
-00:01:16,310 --> 00:01:21,121
+00:01:16,510 --> 00:01:20,487
 validation, and a SHA-256 digest.
 
 17
-00:01:21,121 --> 00:01:25,600
+00:01:20,487 --> 00:01:24,102
 Notice that projected coverage
 is one hundred percent
 
 18
-00:01:25,600 --> 00:01:29,669
+00:01:24,102 --> 00:01:29,669
 while live coverage is still zero.
 Nothing has executed.
 
 19
-00:01:29,669 --> 00:01:35,669
+00:01:29,669 --> 00:01:35,119
 Even when explicitly asked to commit
 early, the domain layer rejects the write
 
 20
-00:01:35,669 --> 00:01:39,258
+00:01:35,119 --> 00:01:39,207
 with APPROVAL_REQUIRED
 and records the blocked attempt.
 
 21
-00:01:39,258 --> 00:01:41,867
+00:01:39,207 --> 00:01:41,867
 The agent cannot approve itself.
 
 22
-00:01:41,867 --> 00:01:46,239
+00:01:41,867 --> 00:01:45,300
 I approve this exact digest
 in the visible interface.
 
 23
-00:01:46,239 --> 00:01:49,029
+00:01:45,300 --> 00:01:47,722
 Approval still does not execute it.
 
 24
-00:01:49,029 --> 00:01:52,903
+00:01:47,722 --> 00:01:50,676
 Now the agent commits only
 that approved digest.
 
 25
-00:01:52,903 --> 00:01:59,575
+00:01:50,676 --> 00:01:59,575
 CommonMesh recomputes it, revalidates
 the plan, and activates the assignments.
 
 26
-00:01:59,575 --> 00:02:05,657
+00:01:59,575 --> 00:02:03,657
 Real plans change. As the human,
 I mark the assigned van unavailable.
 
 27
-00:02:05,657 --> 00:02:12,243
+00:02:03,657 --> 00:02:12,243
 Only its dependent assignment is disrupted
 —the other seven commitments stay active.
 
 28
-00:02:12,243 --> 00:02:18,199
+00:02:12,243 --> 00:02:18,372
 The agent inspects the changed revision
 and stages the smallest valid repair.
 
 29
-00:02:18,199 --> 00:02:23,747
+00:02:18,372 --> 00:02:23,902
 CommonMesh proves the impact:
 seven existing assignments preserved,
 
 30
-00:02:23,747 --> 00:02:28,287
+00:02:23,902 --> 00:02:28,287
 one replaced, and full projected
 coverage restored.
 
 31
-00:02:28,287 --> 00:02:33,930
+00:02:28,287 --> 00:02:33,771
 After a second exact-digest approval,
 the agent commits the repair.
 
 32
-00:02:33,930 --> 00:02:38,791
+00:02:33,771 --> 00:02:38,072
 We end at seven of seven needs covered,
 eight active assignments,
 
 33
-00:02:38,791 --> 00:02:42,201
+00:02:38,072 --> 00:02:41,426
 and a complete human-and-agent
 audit trail.
 
 34
-00:02:42,201 --> 00:02:47,921
+00:02:41,426 --> 00:02:47,921
 CommonMesh gives agents useful autonomy
 without giving away human authority.

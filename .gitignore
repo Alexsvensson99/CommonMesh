@@ -18,6 +18,7 @@ coverage
 # Local demo-video renders (keep scripts, manifests, and thumbnails tracked)
 docs/video/*.aiff
 docs/video/*.mkv
+docs/video/*.mp3
 docs/video/*.mp4
 docs/video/*.wav
 

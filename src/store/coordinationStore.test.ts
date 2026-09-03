@@ -346,11 +346,16 @@ describe('CoordinationStore search and approval boundary', () => {
       expect(store.getSnapshot().coveragePercent).toBe(100)
       expect(store.getState().committedAssignments).toHaveLength(8)
 
-      expect(store.undoLastCommit()).toMatchObject({
-        ok: true,
-        data: { undonePlanId: repair.data.id },
+      const repairedState = structuredClone(store.getState())
+      const reloaded = new CoordinationStore({
+        storage: {
+          getItem: () => JSON.stringify(repairedState),
+          setItem: () => undefined,
+        },
+        now: fixedNow,
       })
-      expect(store.getSnapshot().totals.disrupted).toBe(1)
+      expect(reloaded.getSnapshot().coveragePercent).toBe(100)
+      expect(reloaded.getState().committedAssignments).toHaveLength(8)
     },
   )
 
@@ -580,6 +585,120 @@ describe('CoordinationStore search and approval boundary', () => {
     })
   })
 
+  it('rejects persisted commitments without commit provenance', async () => {
+    const committedStore = makeStore()
+    const staged = await committedStore.stageRecommendedPlan('agent')
+    expect(staged.ok).toBe(true)
+    if (!staged.ok) return
+    committedStore.approveStagedPlan(staged.data.digest)
+    await committedStore.commitApprovedPlan(staged.data.digest)
+
+    const orphanedCommitments = structuredClone(committedStore.getState())
+    orphanedCommitments.stagedPlan = null
+    orphanedCommitments.lastCommit = null
+    const reloaded = new CoordinationStore({
+      storage: {
+        getItem: () => JSON.stringify(orphanedCommitments),
+        setItem: () => undefined,
+      },
+      now: fixedNow,
+    })
+
+    expect(reloaded.getState().stagedPlan).toBeNull()
+    expect(reloaded.getState().committedAssignments).toEqual([])
+    expect(reloaded.getSnapshot()).toMatchObject({
+      revision: 1,
+      totals: { needs: 7, covered: 0 },
+    })
+  })
+
+  it('expires persisted approvals and requires fresh human approval', async () => {
+    const values = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    }
+    const store = new CoordinationStore({
+      storage,
+      now: fixedNow,
+      initialState: createSeedState(),
+    })
+    const staged = await store.stageRecommendedPlan('agent')
+    expect(staged.ok).toBe(true)
+    if (!staged.ok) return
+    expect(store.approveStagedPlan(staged.data.digest)).toMatchObject({ ok: true })
+
+    const reloaded = new CoordinationStore({ storage, now: fixedNow })
+    expect(reloaded.getState().stagedPlan).toMatchObject({
+      id: staged.data.id,
+      status: 'staged',
+      approval: null,
+    })
+    expect(await reloaded.commitApprovedPlan(staged.data.digest)).toMatchObject({
+      ok: false,
+      error: { code: 'APPROVAL_REQUIRED' },
+    })
+    expect(reloaded.getState().committedAssignments).toEqual([])
+  })
+
+  it('expires a persisted repair approval without losing commitments', async () => {
+    const store = makeStore()
+    const initial = await store.stageRecommendedPlan('agent')
+    expect(initial.ok).toBe(true)
+    if (!initial.ok) return
+    store.approveStagedPlan(initial.data.digest)
+    await store.commitApprovedPlan(initial.data.digest)
+    store.setResourceUnavailable('res-northside-van', true, 'human')
+
+    const repair = await store.stageRecommendedPlan('agent')
+    expect(repair.ok).toBe(true)
+    if (!repair.ok) return
+    store.approveStagedPlan(repair.data.digest)
+    const approvedRepair = structuredClone(store.getState())
+    const reloaded = new CoordinationStore({
+      storage: {
+        getItem: () => JSON.stringify(approvedRepair),
+        setItem: () => undefined,
+      },
+      now: fixedNow,
+    })
+
+    expect(reloaded.getState().stagedPlan).toMatchObject({
+      id: repair.data.id,
+      status: 'staged',
+      approval: null,
+    })
+    expect(reloaded.getState().committedAssignments).toHaveLength(8)
+    expect(reloaded.getSnapshot().totals.disrupted).toBe(1)
+  })
+
+  it('reloads a rejected repair with existing commitments intact', async () => {
+    const store = makeStore()
+    const initial = await store.stageRecommendedPlan('agent')
+    expect(initial.ok).toBe(true)
+    if (!initial.ok) return
+    store.approveStagedPlan(initial.data.digest)
+    await store.commitApprovedPlan(initial.data.digest)
+    store.setResourceUnavailable('res-northside-van', true, 'human')
+
+    const repair = await store.stageRecommendedPlan('agent')
+    expect(repair.ok).toBe(true)
+    if (!repair.ok) return
+    store.rejectStagedPlan(repair.data.digest)
+    const rejectedRepair = structuredClone(store.getState())
+    const reloaded = new CoordinationStore({
+      storage: {
+        getItem: () => JSON.stringify(rejectedRepair),
+        setItem: () => undefined,
+      },
+      now: fixedNow,
+    })
+
+    expect(reloaded.getState().stagedPlan).toBeNull()
+    expect(reloaded.getState().committedAssignments).toHaveLength(8)
+    expect(reloaded.getSnapshot().totals.disrupted).toBe(1)
+  })
+
   it('rejects persisted plans with fractional assignment quantities', async () => {
     const store = makeStore()
     const staged = await store.stageRecommendedPlan('agent')
@@ -601,7 +720,7 @@ describe('CoordinationStore search and approval boundary', () => {
     expect(reloaded.getState().committedAssignments).toEqual([])
   })
 
-  it('rejects mismatched committed plans and invalid undo references', async () => {
+  it('rejects mismatched committed plans and invalid commit references', async () => {
     const committedStore = makeStore()
     const staged = await committedStore.stageRecommendedPlan('agent')
     expect(staged.ok).toBe(true)
@@ -615,14 +734,14 @@ describe('CoordinationStore search and approval boundary', () => {
       ...duplicatePlanAssignment.stagedPlan.assignments[0],
     })
 
-    const invalidUndoReference = structuredClone(validState)
-    invalidUndoReference.lastCommit?.previousAssignments.push({
-      ...invalidUndoReference.committedAssignments[0],
+    const invalidCommitReference = structuredClone(validState)
+    invalidCommitReference.lastCommit?.previousAssignments.push({
+      ...invalidCommitReference.committedAssignments[0],
       planId: 'CM-EARLIER',
       resourceId: 'missing-resource',
     })
 
-    for (const corrupted of [duplicatePlanAssignment, invalidUndoReference]) {
+    for (const corrupted of [duplicatePlanAssignment, invalidCommitReference]) {
       const storage = {
         getItem: () => JSON.stringify(corrupted),
         setItem: () => undefined,

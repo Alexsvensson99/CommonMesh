@@ -17,7 +17,7 @@ Official question: does the project use WebMCP thoroughly and skillfully through
 - Tool registration is bound to an `AbortSignal` and cleaned up with the React lifecycle.
 - Agent writes and human actions use the same `CoordinationStore`, so staged plans, commits, and blocked writes update the visible product state and audit trail; read tools remain state-pure.
 - Structured failures include stable codes and a useful next action.
-- Human approval, resource-failure, and reset capabilities are deliberately absent from the WebMCP catalogue. No undo tool is exposed.
+- Human approval, resource-failure, and reset capabilities are deliberately absent from the WebMCP catalogue.
 
 ### Current limitation
 
@@ -45,7 +45,7 @@ Official question: is this a working, runnable project with a complete and coher
 - The failure demo identifies only the assignment that depends on the unavailable van.
 - The repair plan reports seven existing assignments preserved and one assignment replaced.
 - Reset Demo has a confirmation step and persists the restored seed state.
-- Persisted state and lifecycle relationships are validated, public state snapshots are deeply frozen, and state-changing operations remain unchanged when storage rejects a write.
+- Persisted state and lifecycle relationships are validated, orphaned commitments are rejected, approvals expire on reload, public state snapshots are deeply frozen, and state-changing operations remain unchanged when storage rejects a write.
 - The activity trail differentiates Human, Agent, and System actors plus succeeded, blocked, and informational outcomes.
 - The WebMCP Tools dialog lists every exposed tool with its purpose and read/write status.
 - Empty, invalid, stale, missing-approval, unavailable-resource, unsupported-browser, and filtered-no-result states have intentional user-facing copy.
@@ -57,17 +57,16 @@ Official question: is this a working, runnable project with a complete and coher
 
 The project is a client-side deterministic demo. A public end-to-end WebMCP
 transport run and verified product-state captures through a committed repair
-are available. A 2:50 hybrid candidate now combines genuine WebMCP staging and
+are available. The public 2:50 hybrid demo combines genuine WebMCP staging and
 approval-boundary footage with those readable states; it passed independent
-Ultra visual QA. Explicit upload approval and verified public playback remain
-separate gates.
+Ultra visual and caption QA and publishes a manual English caption track.
 
 ### Assessment
 
 Strong execution evidence across the public build, verified captures,
-automated tests, real WebMCP transport, and the independently validated hybrid
-candidate. Public video evidence must not be claimed until the exact candidate
-passes signed-out YouTube playback verification.
+automated tests, real WebMCP transport, and the independently validated public
+video. YouTube reports an unauthenticated `OK` player response and
+`isUnlisted: false` for the exact published candidate.
 
 ## 3. Potential Impact
 
@@ -116,13 +115,16 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
 - The repository is paired with a verified public demo, a live WebMCP catalogue,
-  repair evidence, a documented end-to-end transport run, and a rendered
-  170-second hybrid candidate, independently verified on its exact hash.
-  Submission readiness still depends on explicit upload approval and verified
-  public YouTube playback.
+  repair evidence, a documented end-to-end transport run, and a public
+  170-second hybrid demo independently verified on its exact hash.
+- Submission readiness still depends on adding the video URL to the live
+  Devpost project, confirming the personal form answers, rerunning the final
+  repository gate, and receiving a separate explicit **yes, submit**.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)
+
+Demo video: [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk)
 
 ## Primary references
 
