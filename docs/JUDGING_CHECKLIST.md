@@ -67,11 +67,12 @@ Official question: does the project make a credible and specific case for a real
 - Splittable needs can combine partial contributions while indivisible needs still require a fully capable resource.
 - The workflow reduces comparison work while retaining human control over commitments that affect people and shared resources.
 - Selective repair demonstrates continuity: one failed resource does not invalidate unrelated work.
+- In the deterministic run, a van failure moves coverage from 100% to 86%; repair restores 100% while preserving 7 of 8 assignments (87.5%).
 - Structured results and an audit trail make agent actions inspectable by coordinators.
 
 ### Current limitation
 
-The demo does not prove adoption, time savings, or outcomes in a live organization. Production use would need identity, server-side authorization, privacy controls, multi-user synchronization, notifications, and integrations with real inventory or volunteer systems.
+The demo does not prove adoption, time savings, or outcomes in a live organization. Production use would need identity, server-side authorization, privacy controls, cross-tab and multi-user synchronization, notifications, and integrations with real inventory or volunteer systems.
 
 ### Assessment
 
@@ -101,7 +102,7 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
-- The repository is paired with a verified public demo and a documented end-to-end transport run; a concise browser-agent video is still required before submission readiness is claimed.
+- The repository is paired with a verified public demo, live WebMCP catalogue and repair captures, and a documented end-to-end transport run; a concise browser-agent video is still required before submission readiness is claimed.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)

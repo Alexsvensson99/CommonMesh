@@ -86,6 +86,26 @@ describe('CoordinationStore search and approval boundary', () => {
     })
   })
 
+  it('ranks the strongest compatible resource first for every need', () => {
+    const store = makeStore()
+    const expectedFirstMatch = {
+      'need-chairs': 'res-library-chairs',
+      'need-van': 'res-northside-van',
+      'need-volunteers': 'res-aya',
+      'need-driver': 'res-sam',
+      'need-lunch': 'res-community-kitchen',
+      'need-projector': 'res-media-kit',
+      'need-quiet-room': 'res-advice-room',
+    }
+
+    Object.entries(expectedFirstMatch).forEach(([needId, resourceId]) => {
+      expect(store.searchResources({ needId })[0]).toMatchObject({
+        id: resourceId,
+        compatibleWithNeed: true,
+      })
+    })
+  })
+
   it('stages without committing and lets the human reject the exact digest', async () => {
     const store = makeStore()
     const staged = await store.stageRecommendedPlan('agent')
@@ -102,6 +122,27 @@ describe('CoordinationStore search and approval boundary', () => {
       actor: 'human',
       action: 'reject_plan',
     })
+  })
+
+  it('refuses to stage an otherwise valid plan with incomplete coverage', async () => {
+    const store = makeStore()
+    const partialPlan = buildRecommendedAssignments(store.getState()).filter(
+      (assignment) => assignment.needId === 'need-chairs',
+    )
+
+    expect(await store.stagePlan(partialPlan, 'Cover only the chairs')).toMatchObject({
+      ok: false,
+      error: {
+        code: 'PLAN_INVALID',
+        details: {
+          errors: expect.arrayContaining([
+            expect.objectContaining({ code: 'WORKSPACE_UNDER_COVERED' }),
+          ]),
+        },
+      },
+    })
+    expect(store.getState().stagedPlan).toBeNull()
+    expect(store.getState().committedAssignments).toEqual([])
   })
 
   it('rejects an unapproved commit and requires the exact approval digest', async () => {
@@ -238,50 +279,80 @@ describe('CoordinationStore search and approval boundary', () => {
     expect(store.getState().committedAssignments).toEqual([])
   })
 
-  it('repairs only the disrupted van assignment and can undo the repair', async () => {
-    const store = makeStore()
-    const initial = await store.stageRecommendedPlan('agent')
-    expect(initial.ok).toBe(true)
-    if (!initial.ok) return
-    store.approveStagedPlan(initial.data.digest)
-    await store.commitApprovedPlan(initial.data.digest)
-    expect(store.getStagedPlanDetails()).toMatchObject({
-      validation: {
-        metrics: { preservedAssignments: 0, replacedAssignments: 0 },
-      },
-    })
+  it.each([
+    ['res-northside-van', 'res-harbour-van'],
+    ['res-harbour-van', 'res-northside-van'],
+  ])(
+    'repairs only the disrupted van assignment when %s fails',
+    async (initialVanId, replacementVanId) => {
+      const store = makeStore()
+      const initialAssignments = buildRecommendedAssignments(
+        store.getState(),
+      ).map((assignment) =>
+        assignment.needId === 'need-van'
+          ? { ...assignment, resourceId: initialVanId }
+          : assignment,
+      )
+      const initial = await store.stagePlan(
+        initialAssignments,
+        'Cover every open need',
+        'agent',
+      )
+      expect(initial.ok).toBe(true)
+      if (!initial.ok) return
+      store.approveStagedPlan(initial.data.digest)
+      await store.commitApprovedPlan(initial.data.digest)
+      expect(store.getStagedPlanDetails()).toMatchObject({
+        validation: {
+          metrics: { preservedAssignments: 0, replacedAssignments: 0 },
+        },
+      })
 
-    store.setResourceUnavailable('res-northside-van', true, 'human')
-    expect(store.getSnapshot().totals.disrupted).toBe(1)
+      store.setResourceUnavailable(initialVanId, true, 'human')
+      expect(store.getSnapshot()).toMatchObject({
+        totals: { covered: 6, disrupted: 1 },
+        coveragePercent: 86,
+      })
+      expect(
+        store.getState().committedAssignments.filter((assignment) => {
+          const resource = store
+            .getState()
+            .resources.find(
+              (candidate) => candidate.id === assignment.resourceId,
+            )
+          return resource?.availability.status === 'available'
+        }),
+      ).toHaveLength(7)
 
-    const repair = await store.stageRecommendedPlan('agent')
-    expect(repair.ok).toBe(true)
-    if (!repair.ok) return
-    expect(repair.data.assignments).toEqual([
-      expect.objectContaining({
-        needId: 'need-van',
-        resourceId: 'res-harbour-van',
-      }),
-    ])
+      const repair = await store.stageRecommendedPlan('agent')
+      expect(repair.ok).toBe(true)
+      if (!repair.ok) return
+      expect(repair.data.assignments).toEqual([
+        expect.objectContaining({
+          needId: 'need-van',
+          resourceId: replacementVanId,
+        }),
+      ])
 
-    store.approveStagedPlan(repair.data.digest)
-    expect(await store.commitApprovedPlan(repair.data.digest)).toMatchObject({
-      ok: true,
-    })
-    expect(store.getStagedPlanDetails()).toMatchObject({
-      validation: {
-        metrics: { preservedAssignments: 7, replacedAssignments: 1 },
-      },
-    })
-    expect(store.getSnapshot().coveragePercent).toBe(100)
-    expect(store.getState().committedAssignments).toHaveLength(8)
+      store.approveStagedPlan(repair.data.digest)
+      expect(await store.commitApprovedPlan(repair.data.digest)).toMatchObject({
+        ok: true,
+      })
+      expect(store.getStagedPlanDetails()).toMatchObject({
+        validation: {
+          metrics: { preservedAssignments: 7, replacedAssignments: 1 },
+        },
+      })
+      expect(store.getSnapshot().coveragePercent).toBe(100)
+      expect(store.getState().committedAssignments).toHaveLength(8)
 
-    expect(store.undoLastCommit()).toMatchObject({
-      ok: true,
-      data: { undonePlanId: repair.data.id },
-    })
-    expect(store.getSnapshot().totals.disrupted).toBe(1)
-  })
+      expect(store.undoLastCommit()).toMatchObject({
+        ok: true,
+        data: { undonePlanId: repair.data.id },
+      })
+      expect(store.getSnapshot().totals.disrupted).toBe(1)
+    },
+  )
 
   it('reset restores the exact deterministic demo state', async () => {
     const store = makeStore()
@@ -377,6 +448,23 @@ describe('CoordinationStore search and approval boundary', () => {
     const store = new CoordinationStore({ storage, now: fixedNow })
 
     expect(store.getState().needs[0].start).toBe('2026-09-05T08:00:00+02:00')
+    expect(store.getSnapshot()).toMatchObject({
+      revision: 1,
+      totals: { needs: 7, resources: 15 },
+    })
+  })
+
+  it('falls back to seed data when a persisted event date is invalid', () => {
+    const state = createSeedState()
+    state.eventDate = '2026-02-31'
+    const storage = {
+      getItem: () => JSON.stringify(state),
+      setItem: () => undefined,
+    }
+
+    const store = new CoordinationStore({ storage, now: fixedNow })
+
+    expect(store.getState().eventDate).toBe('2026-09-05')
     expect(store.getSnapshot()).toMatchObject({
       revision: 1,
       totals: { needs: 7, resources: 15 },

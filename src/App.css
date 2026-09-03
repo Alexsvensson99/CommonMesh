@@ -990,7 +990,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
-  color: #77847e;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -1219,7 +1219,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #8b9691;
+  color: var(--muted);
 }
 
 .plan-lifecycle li:not(:last-child)::after {
@@ -1306,7 +1306,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  color: #7c8983;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -1490,7 +1490,7 @@
 
 .assignment-copy span {
   margin-top: 3px;
-  color: #738079;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -1790,7 +1790,7 @@
 .resource-title-row > div > span {
   display: block;
   margin-top: 3px;
-  color: #7e8984;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -2248,7 +2248,7 @@
 
 .activity-meta time {
   margin-left: auto;
-  color: #7d8983;
+  color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -2268,7 +2268,7 @@
 
 .activity-body > p {
   margin: 3px 0 5px;
-  color: #718079;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -2541,7 +2541,7 @@ footer p {
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1020px) {
   .app-shell {
     display: block;
   }
@@ -2814,7 +2814,7 @@ footer p {
   .approval-actions,
   .reset-dialog-actions {
     align-items: stretch;
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
 
   .approval-actions > *,

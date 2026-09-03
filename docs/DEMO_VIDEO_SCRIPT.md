@@ -16,9 +16,8 @@
 1. Run the complete quality gate on the exact commit to be shown.
 2. Open CommonMesh in the WebMCP-capable judge environment.
 3. Confirm the top status reads **WebMCP live · 9 tools**.
-4. Rehearse the full sequence once. Verify that the initial plan has eight assignments and uses the **Northside cargo van**, so the fixed human failure control produces the documented seven-preserved/one-replaced repair.
-5. If the agent produces another valid plan, do not mislabel it as the documented deterministic path. Reset and repeat the mission with this transparent addition: **“For this resilience demonstration, use the Northside cargo van if it validates.”**
-6. After rehearsal, click **Reset Demo**, confirm **Reset Demo** in the dialog, and verify the reset checkpoint below.
+4. Rehearse the full sequence once. Verify that the initial plan has eight assignments and that **Mark assigned van unavailable** targets the cargo van shown in the committed assignment.
+5. After rehearsal, click **Reset Demo**, confirm **Reset Demo** in the dialog, and verify the reset checkpoint below.
 
 ## Exact prompts
 
@@ -129,13 +128,13 @@ I have approved the repair in CommonMesh. Commit only that exact approved repair
 
 ### 1:55–2:10 — Introduce a real-world disruption
 
-**Operator:** Click **Mark primary van unavailable**. Frame the amber disruption banner and coverage metrics.
+**Operator:** Click **Mark assigned van unavailable**. Frame the amber disruption banner and coverage metrics.
 
 **Required visible checkpoint:** one disrupted need, 6/7 needs covered, 86% coverage, 14 available resources, and seven active assignments.
 
 **Narration:**
 
-> “Real plans change. As the human, I mark the primary van unavailable. Only its dependent assignment is disrupted; the other seven commitments stay active.”
+> “Real plans change. As the human, I mark the assigned van unavailable. Only its dependent assignment is disrupted; the other seven commitments stay active.”
 
 ### 2:10–2:31 — Agent stages a surgical repair
 

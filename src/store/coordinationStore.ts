@@ -58,6 +58,17 @@ function isBoundedSerializedString(
   )
 }
 
+function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false
+  }
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  )
+}
+
 function isAssignment(value: unknown): value is AssignmentInput {
   const start = isRecord(value) ? parseTimestamp(value.start) : Number.NaN
   const end = isRecord(value) ? parseTimestamp(value.end) : Number.NaN
@@ -105,7 +116,7 @@ function isNeed(value: unknown): value is CoordinationState['needs'][number] {
     value.quantity > 0 &&
     typeof value.unit === 'string' &&
     typeof value.location === 'string' &&
-    typeof value.date === 'string' &&
+    isCalendarDate(value.date) &&
     typeof value.start === 'string' &&
     typeof value.end === 'string' &&
     Number.isFinite(start) &&
@@ -222,7 +233,7 @@ function isCoordinationState(value: unknown): value is CoordinationState {
   if (
     value.schemaVersion !== 2 ||
     typeof value.eventName !== 'string' ||
-    typeof value.eventDate !== 'string' ||
+    !isCalendarDate(value.eventDate) ||
     typeof value.hubLocation !== 'string' ||
     typeof value.maxDistanceKm !== 'number' ||
     !Number.isFinite(value.maxDistanceKm) ||
@@ -523,7 +534,7 @@ export class CoordinationStore {
       ? this.state.needs.find((candidate) => candidate.id === filters.needId)
       : undefined
 
-    return this.state.resources
+    const resources = this.state.resources
       .filter((resource) => !filters.type || resource.type === filters.type)
       .filter(
         (resource) =>
@@ -619,6 +630,27 @@ export class CoordinationStore {
           compatibilityIssues,
         }
       })
+
+    if (!need) return resources
+
+    return resources.sort((left, right) => {
+      const compatibilityOrder =
+        Number(right.compatibleWithNeed) - Number(left.compatibleWithNeed)
+      if (compatibilityOrder !== 0) return compatibilityOrder
+
+      const coverageOrder =
+        Number(right.fullyCoversNeed) - Number(left.fullyCoversNeed)
+      if (coverageOrder !== 0) return coverageOrder
+
+      const issueOrder =
+        left.compatibilityIssues.length - right.compatibilityIssues.length
+      if (issueOrder !== 0) return issueOrder
+
+      const distanceOrder = left.distanceKm - right.distanceKm
+      if (distanceOrder !== 0) return distanceOrder
+
+      return left.id.localeCompare(right.id)
+    })
   }
 
   getResourceDetails(resourceId: string) {

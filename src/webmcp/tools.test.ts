@@ -74,6 +74,88 @@ describe('CommonMesh WebMCP tools', () => {
     expect(names).not.toContain('undo_last_commit')
   })
 
+  it('returns the closest fully compatible van choices first', async () => {
+    const result = (await byName(
+      createCommonMeshTools(makeStore()),
+      'search_resources',
+    ).execute({ needId: 'need-van', type: 'transport' })) as ToolResult<{
+      resources: Array<{
+        id: string
+        canContribute: boolean
+        fullyCoversNeed: boolean
+      }>
+    }>
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.resources.slice(0, 2)).toMatchObject([
+      {
+        id: 'res-northside-van',
+        canContribute: true,
+        fullyCoversNeed: true,
+      },
+      {
+        id: 'res-harbour-van',
+        canContribute: true,
+        fullyCoversNeed: true,
+      },
+    ])
+  })
+
+  it('describes ranking only for need-scoped resource searches', async () => {
+    const search = byName(createCommonMeshTools(makeStore()), 'search_resources')
+
+    const unscoped = (await search.execute({ limit: 1 })) as ToolResult<unknown>
+    expect(unscoped).toMatchObject({ ok: true })
+    expect(unscoped.nextAction).not.toContain('ranked')
+
+    const noResults = (await search.execute({
+      query: 'resource-that-does-not-exist',
+    })) as ToolResult<unknown>
+    expect(noResults).toMatchObject({ ok: true })
+    expect(noResults.nextAction).toBe(
+      'No resources matched these filters. Relax optional filters or inspect another need.',
+    )
+  })
+
+  it('reports incomplete coverage as an invalid dry run and refuses staging', async () => {
+    const store = makeStore()
+    const tools = createCommonMeshTools(store)
+    const partialPlan = buildRecommendedAssignments(store.getState()).filter(
+      (assignment) => assignment.needId === 'need-chairs',
+    )
+
+    expect(
+      await byName(tools, 'validate_match_plan').execute({
+        assignments: partialPlan,
+      }),
+    ).toMatchObject({
+      ok: true,
+      data: {
+        valid: false,
+        coverage: { needsFullyCovered: 1, percentage: 14 },
+        uncoveredNeedIds: expect.arrayContaining(['need-van']),
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: 'WORKSPACE_UNDER_COVERED' }),
+        ]),
+      },
+    })
+
+    expect(
+      await byName(tools, 'stage_match_plan').execute({
+        intent: 'Cover only the chairs',
+        assignments: partialPlan,
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: {
+        code: 'PLAN_INVALID',
+        details: { valid: false },
+      },
+    })
+    expect(store.getState().stagedPlan).toBeNull()
+  })
+
   it('executes every tool through the primary collaboration flow', async () => {
     const store = makeStore()
     const tools = createCommonMeshTools(store)

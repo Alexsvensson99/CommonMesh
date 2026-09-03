@@ -8,6 +8,8 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 
 **[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)**
 
+Use ChatGPT's in-app browser or a WebMCP-compatible Chrome build for live agent tools. The human interface remains fully usable in other modern browsers.
+
 CommonMesh is a React application where a browser agent can discover community needs, compare constrained resources, validate a complete match plan, stage it for review, and—only after explicit human approval—commit the exact approved proposal. The product is not a chatbot: CommonMesh owns the state, rules, tools, approval gate, and visible audit trail.
 
 ## Screenshots
@@ -16,15 +18,23 @@ These local product-state captures show the deterministic judging flow. The
 public build has been exercised end to end through its live WebMCP transport;
 the final browser-agent recording remains a separate submission gate.
 
+**Live WebMCP repair committed — full coverage restored**
+
+![Committed repair with WebMCP live and 100% coverage](docs/screenshots/05-committed-plan.jpg)
+
+| Live WebMCP catalogue | Live selective repair |
+| --- | --- |
+| ![Nine live WebMCP tools with seven read and two write capabilities](docs/screenshots/07-webmcp-tools-live.jpg) | ![Live WebMCP repair preserving seven assignments and replacing one](docs/screenshots/08-webmcp-repair-live.jpg) |
+
+**Approval boundary visible in the shared activity trail**
+
+![Blocked APPROVAL_REQUIRED commit and successful agent staging in the live activity trail](docs/screenshots/09-approval-required-live.jpg)
+
 | Coordination overview | Plan review |
 | --- | --- |
 | ![Saturday Community Day dashboard](docs/screenshots/01-overview.png) | ![Coordination plan in the review surface](docs/screenshots/02-agent-proposed-plan.png) |
 | **Human approval — execution still pending** | **Selective repair — seven preserved, one replaced** |
 | ![Human-approved plan before commit](docs/screenshots/03-human-approved-plan.png) | ![Repair plan preserving seven assignments and replacing one](docs/screenshots/04-repair-plan.png) |
-
-**Approved repair committed — full coverage restored**
-
-![Committed repair with 100% live coverage](docs/screenshots/05-committed-plan.jpg)
 
 <details>
 <summary>Compact mobile overview</summary>
@@ -91,7 +101,7 @@ Approval and execution are separate states. **Agents can propose changes. Only y
 
 The fifteen resources include valid alternatives plus deliberate constraints: two vans, an undersized trailer, a schedule-conflicted volunteer, a too-distant driver, a projector without the required capability, and multiple viable chair and volunteer combinations.
 
-The deterministic recommendation produces eight assignments covering all seven needs. After the primary van becomes unavailable, exactly one committed assignment is affected. A repair plan preserves the other seven assignments and replaces only the van match.
+The deterministic recommendation produces eight assignments covering all seven needs. The human failure control follows whichever cargo van the agent committed, so exactly one assignment is affected even if the agent chose a valid alternative. A repair plan preserves the other seven assignments and replaces only the van match.
 
 ## Architecture
 
@@ -146,7 +156,7 @@ availability, and reset are visible human controls.
 - Staging a changed plan removes any previous approval.
 - Changing resource state invalidates a pending approval and makes the proposal stale.
 - Commit recomputes the digest and revalidates the complete plan immediately before mutation.
-- An unapproved, stale, mismatched, invalid, consumed, or superseded operation returns a structured error and appears as blocked activity.
+- Policy and validation failures—including unapproved, stale, mismatched, invalid, consumed, or superseded operations—return structured errors and appear as blocked activity while storage is available.
 - Repair plans replace assignments only for targeted needs; unaffected commitments are preserved.
 - Community-authored descriptions are explicitly labelled untrusted for agents.
 - Tool registration is same-origin by default and bound to the React lifecycle.
@@ -154,7 +164,7 @@ availability, and reset are visible human controls.
 - State-changing operations are transactional: if browser storage rejects a write, the visible state is left unchanged and the error remains dismissible.
 - Demo reset restores seeded resources, clears plans and approvals, removes assignments, and does not claim success if the clean state could not be persisted.
 
-This client-side competition demo proves the interaction and authorization model inside one browser session. It is not a production identity or multi-user authorization system; those require a server-side trust boundary.
+This client-side competition demo proves the interaction and authorization model inside one page instance. It is not a production identity, cross-tab coordination, or multi-user authorization system; those require a server-side trust boundary.
 
 ## Running Locally
 
@@ -214,7 +224,7 @@ evaluation matrix and its automated or manual evidence.
 6. Ask the agent to commit before approval. Show the structured `APPROVAL_REQUIRED` result and blocked activity.
 7. Click **Approve Plan**. Emphasize that the state is APPROVED, not COMMITTED.
 8. Ask the agent to commit the exact digest. Confirm 100% live coverage and COMMITTED state.
-9. As the human, click **Mark primary van unavailable**. Confirm that one assignment requires attention and seven remain active.
+9. As the human, click **Mark assigned van unavailable**. Confirm that one assignment requires attention and seven remain active.
 10. Ask the agent to repair only the affected need. Show **7 existing assignments preserved** and **1 assignment replaced**.
 11. Approve and commit the repair. Confirm full coverage and review the complete Human + Agent Activity trail.
 12. Reset again to prove the demo is repeatable.

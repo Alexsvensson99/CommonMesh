@@ -1160,12 +1160,14 @@ function NoticeBar({
 function DemoControls({
   webMCP,
   vanUnavailable,
+  vanName,
   onReset,
   onVanChange,
   onTools,
 }: {
   webMCP: WebMCPStatus
   vanUnavailable: boolean
+  vanName: string
   onReset: () => void
   onVanChange: (unavailable: boolean) => void
   onTools: () => void
@@ -1188,11 +1190,17 @@ function DemoControls({
           type="button"
           className={vanUnavailable ? 'secondary-button' : 'van-button'}
           onClick={() => onVanChange(!vanUnavailable)}
+          aria-label={
+            vanUnavailable
+              ? `Restore failed van: ${vanName}`
+              : `Mark assigned van unavailable: ${vanName}`
+          }
+          title={vanName}
         >
           {vanUnavailable ? <RefreshCcw size={16} /> : <Truck size={16} />}
           {vanUnavailable
-            ? 'Restore primary van'
-            : 'Mark primary van unavailable'}
+            ? 'Restore failed van'
+            : 'Mark assigned van unavailable'}
         </button>
       </div>
       <div className={`webmcp-status-card ${webMCPReady ? 'connected' : ''}`}>
@@ -1232,12 +1240,26 @@ function App() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  const planHeadingRef = useRef<HTMLHeadingElement>(null)
+  const planFocusKey = state.stagedPlan
+    ? `${state.stagedPlan.id}:${getPlanPresentationState(state.stagedPlan, state.resourceRevision)}`
+    : 'empty'
+  const previousPlanFocusKey = useRef(planFocusKey)
 
   useEffect(() => {
     if (!notice || notice.kind === 'error') return
     const timer = window.setTimeout(() => setNotice(null), 4500)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    if (previousPlanFocusKey.current === planFocusKey) return
+    previousPlanFocusKey.current = planFocusKey
+    const frame = window.requestAnimationFrame(() => {
+      planHeadingRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [planFocusKey])
 
   const assignedResourceIds = useMemo(
     () => new Set(state.committedAssignments.map((item) => item.resourceId)),
@@ -1250,9 +1272,24 @@ function App() {
   const filteredNeeds = snapshot.needs.filter(
     (need) => needFilter === 'all' || need.status === needFilter,
   )
-  const primaryVanUnavailable =
+  const assignedVanResourceId = state.committedAssignments.find(
+    (assignment) => assignment.needId === 'need-van',
+  )?.resourceId
+  const assignedVan = state.resources.find(
+    (resource) => resource.id === assignedVanResourceId,
+  )
+  const previousCommittedVanResourceId = state.lastCommit?.previousAssignments.find(
+    (assignment) => assignment.needId === 'need-van',
+  )?.resourceId
+  const previousFailedVan = state.resources.find(
+    (resource) =>
+      resource.id === previousCommittedVanResourceId &&
+      resource.availability.status === 'unavailable',
+  )
+  const demoVan =
+    previousFailedVan ??
+    assignedVan ??
     state.resources.find((resource) => resource.id === 'res-northside-van')
-      ?.availability.status === 'unavailable'
   const disruptedAssignments = state.committedAssignments.filter(
     (assignment) =>
       state.resources.find((resource) => resource.id === assignment.resourceId)
@@ -1552,7 +1589,9 @@ function App() {
               <div className="panel-heading">
                 <div>
                   <span className="section-kicker">Human approval checkpoint</span>
-                  <h2>Plan review</h2>
+                  <h2 ref={planHeadingRef} tabIndex={-1}>
+                    Plan review
+                  </h2>
                 </div>
                 <div
                   className={`agent-presence ${webMCP.state === 'connected' ? 'connected' : 'ready'}`}
@@ -1671,11 +1710,12 @@ function App() {
 
             <DemoControls
               webMCP={webMCP}
-              vanUnavailable={Boolean(primaryVanUnavailable)}
+              vanUnavailable={demoVan?.availability.status === 'unavailable'}
+              vanName={demoVan?.name ?? 'Cargo van'}
               onReset={() => setResetOpen(true)}
-              onVanChange={(unavailable) =>
-                updateAvailability('res-northside-van', unavailable)
-              }
+              onVanChange={(unavailable) => {
+                if (demoVan) updateAvailability(demoVan.id, unavailable)
+              }}
               onTools={() => setToolsOpen(true)}
             />
 

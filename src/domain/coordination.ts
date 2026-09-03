@@ -588,6 +588,14 @@ export function validateMatchPlan(
       },
     ]
   })
+  if (uncoveredNeeds.length > 0) {
+    errors.push(
+      issue(
+        'WORKSPACE_UNDER_COVERED',
+        `The plan leaves ${uncoveredNeeds.length} of ${state.needs.length} needs without full projected coverage.`,
+      ),
+    )
+  }
   const projectedCovered = state.needs.length - uncoveredNeeds.length
   const conflictCodes = new Set([
     'RESOURCE_TIME_CONFLICT',
@@ -734,6 +742,7 @@ export function formatTimeWindow(start: string, end: string) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+    timeZone: 'Europe/Stockholm',
   })
   return `${format.format(new Date(start))}–${format.format(new Date(end))}`
 }

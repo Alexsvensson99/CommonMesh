@@ -4,6 +4,7 @@ import type { AssignmentInput, CoordinationState } from './types'
 import {
   buildRecommendedAssignments,
   createPlanDigest,
+  formatTimeWindow,
   getCoordinationSnapshot,
   validateMatchPlan,
 } from './coordination'
@@ -30,6 +31,12 @@ function errorCodes(state: CoordinationState, assignments: AssignmentInput[]) {
 }
 
 describe('coordination constraints', () => {
+  it('renders event times in the Gothenburg event timezone', () => {
+    expect(
+      formatTimeWindow('2026-09-05T06:00:00Z', '2026-09-05T11:00:00Z'),
+    ).toBe('08:00–13:00')
+  })
+
   it('builds a complete valid plan with coverage and efficiency metrics', () => {
     const state = createSeedState()
     const validation = validateMatchPlan(
@@ -62,6 +69,25 @@ describe('coordination constraints', () => {
     expect(validation.errors[0]?.code).toBe('EMPTY_PLAN')
     expect(validation.uncoveredNeeds).toHaveLength(7)
     expect(validation.coverage.percentage).toBe(0)
+  })
+
+  it('rejects a partial initial plan that leaves the workspace under-covered', () => {
+    const state = createSeedState()
+    const validation = validateMatchPlan(state, [
+      assignment(state, 'need-chairs', 'res-library-chairs'),
+    ])
+
+    expect(validation.valid).toBe(false)
+    expect(validation.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'WORKSPACE_UNDER_COVERED' }),
+      ]),
+    )
+    expect(validation.coverage).toMatchObject({
+      needsFullyCovered: 1,
+      percentage: 14,
+    })
+    expect(validation.uncoveredNeeds).toHaveLength(6)
   })
 
   it('enforces resource availability and scheduling windows', () => {

@@ -81,10 +81,10 @@ This is materially different from DOM automation: the agent reads domain state d
 - Commit checks the supplied digest, approval digest, current revision, plan validity, and replay state.
 - Commit recomputes the digest immediately before mutation.
 - Missing approval, digest mismatch, stale state, tampering, invalid plans, cancellation, and replay return structured errors.
-- Blocked and successful writes appear in the visible Human + Agent Activity trail.
+- Policy-blocked and successful writes appear in the visible Human + Agent Activity trail while browser storage is available.
 - State-changing operations are transactional with respect to browser persistence: if storage fails, the visible state is not advanced.
 
-This competition build demonstrates the interaction and authorization model within one browser session. It does not claim to provide production identity, server-side authorization, or multi-user security.
+This competition build demonstrates the interaction and authorization model within one page instance. It does not claim to provide production identity, cross-tab coordination, server-side authorization, or multi-user security.
 
 ## Key features
 
@@ -144,6 +144,8 @@ Separate implementations would make the demo easy to desynchronize. Routing both
 
 CommonMesh is aimed at community organizers coordinating volunteers and shared local capacity. The prototype shows how an agent can reduce comparison work while a coordinator retains control over commitments affecting people, vehicles, food, equipment, and accessible space. Its selective-repair model also shows how coordination can continue when one resource fails instead of discarding unaffected work.
 
+In the deterministic scenario, one van failure lowers live coverage from 100% to 86%. The selective repair restores 100% coverage while preserving 7 of 8 existing assignments (87.5%) and replacing only the affected match.
+
 The current evidence is prototype evidence: a concrete scenario, repeatable workflow, structured safeguards, automated tests, local product-state captures, and a documented public in-app-browser WebMCP evaluation in the repository. It does **not** establish adoption, time savings, or real-world organizational outcomes.
 
 Production deployment would require server-side identity and authorization, privacy controls, multi-user synchronization, notifications, and integrations with real inventory or volunteer systems.
@@ -154,7 +156,7 @@ The category names below follow the repository's current judging checklist. Re-c
 
 | Category | Strongest repository evidence | Honest boundary |
 | --- | --- | --- |
-| **WebMCP Leverage** | Nine purpose-built tools carry the full inspect -> search -> validate -> stage -> approve -> commit -> audit workflow; schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
+| **WebMCP Leverage** | Nine purpose-built tools carry inspect -> search -> validate -> stage -> read -> commit -> audit; the separate human UI supplies exact-digest approval. Schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
 | **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local screenshots, automated domain/store/tool tests, and a documented end-to-end run through the public WebMCP transport | The final recorded demo remains an open gate |
 | **Potential Impact** | A specific organizer audience, realistic cross-category constraints, inspectable actions, and continuity through selective repair | No production deployment, user research, adoption, or outcome metrics are claimed |
 | **Creativity & Ambition** | The website is an agent-capable coordination system rather than a chatbot; exact-digest governance and surgical recovery are part of the domain model | Matching, volunteer platforms, and approval workflows are not claimed as individually novel |
@@ -180,6 +182,9 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 publi
 3. [`03-human-approved-plan.png`](screenshots/03-human-approved-plan.png) — exact plan approved while live coverage remains 0%, proving approval is not execution.
 4. [`04-repair-plan.png`](screenshots/04-repair-plan.png) — one disrupted assignment, seven active assignments, and a proposed one-assignment repair preserving seven.
 5. [`05-committed-plan.jpg`](screenshots/05-committed-plan.jpg) — approved repair committed with 7/7 needs covered, 100% coverage, and eight active assignments.
+6. [`07-webmcp-tools-live.jpg`](screenshots/07-webmcp-tools-live.jpg) — live registration with nine tools, the 7 read / 2 write split, and the absence of an approval tool.
+7. [`08-webmcp-repair-live.jpg`](screenshots/08-webmcp-repair-live.jpg) — live selective-repair state with seven assignments preserved, one replaced, and 100% projected coverage.
+8. [`09-approval-required-live.jpg`](screenshots/09-approval-required-live.jpg) — the shared activity trail recording the agent's blocked `APPROVAL_REQUIRED` commit beside its successful staging action.
 
 ## Links
 
@@ -191,11 +196,11 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 publi
 
 ## Build-process disclosure
 
-**[AUTHOR CONFIRMATION REQUIRED]** The repository does not by itself establish which design, implementation, debugging, testing, or writing tasks were completed with Codex or another AI system. If the official form asks, add a short factual account based on the actual work history; do not infer it from commit messages or the finished code.
+**Prepared factual draft — confirm against the live form before use:** OpenAI Codex assisted with repository setup, product and interaction design iteration, implementation, debugging, automated testing, accessibility review, documentation, deployment checks, and end-to-end verification. The project owner defined the product direction, constrained the scope, set the human-approval policy, reviewed the work, and remains responsible for the final entry.
 
 ## Known limitations
 
-- Client-side, single-browser prototype; the public static demo has no production server trust boundary.
+- Client-side, single-page-instance prototype; the public static demo has no production server trust boundary or cross-tab synchronization.
 - Browser persistence is local to one origin and browser profile.
 - Live WebMCP execution depends on ChatGPT's in-app browser or a compatible Chrome build.
 - Seeded data is deterministic demonstration data, not a live community directory.
@@ -206,11 +211,11 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 publi
 
 - [x] Keep project claims traceable to code, tests, repository docs, or product-state captures.
 - [x] Prepare a concise product story, technical explanation, evidence map, screenshot list, and timed demo script.
-- [x] Include the configured repository remote without claiming its public visibility was verified.
+- [x] Include the verified public repository URL.
 - [ ] **Verify the current official rules, eligibility, deadline, judging wording, and exact form fields on Devpost.**
 - [x] Verify that the repository is publicly accessible without authentication.
 - [x] Deploy and verify a free, unrestricted public demo in the WebMCP-capable browser.
-- [x] Run the complete quality gate on the deployed source commit: lint, typecheck, 40 tests, and production build all pass.
+- [x] Run the complete local quality gate: lint, typecheck, 49 tests, and production build all pass. Re-run it on the final deployed commit.
 - [ ] **Rehearse and record the real browser-agent flow from the mission prompt.**
 - [ ] **Upload the video, verify public playback, and replace the video placeholder.**
 - [x] Verify the full public transport flow: discovery, validation, staging, blocked commit, approval, commit, failure, selective repair, second commit, activity, and persisted reset.
