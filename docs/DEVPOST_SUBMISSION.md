@@ -1,12 +1,22 @@
-# CommonMesh — Submission Draft
+# CommonMesh — Long-form Submission Narrative
 
-> **Draft status:** Prepared from the current repository on 2026-09-03. Nothing has been sent to Devpost. The repository and public demo are verified; official form fields, current rules, and the final video URL remain open gates.
+> **Supporting document:** The canonical Devpost field copy and exact form
+> values live in [`../devpost-submission.md`](../devpost-submission.md). This
+> longer narrative supplies judging context and repository evidence; it is not
+> a second source of submission-field values.
+>
+> **Current status:** The Devpost project page is populated, but the WebMCP
+> Challenge entry has not been submitted. A 2:50 hybrid demo candidate has
+> passed technical and independent visual QA locally. Explicit upload approval,
+> verified public playback and URL, four personal-answer
+> confirmations, final CI/deployment correlation, and an explicit **yes,
+> submit** remain open gates.
 
 ## Title
 
 **CommonMesh**
 
-## One-line pitch
+## Long-form pitch
 
 A WebMCP-native coordination workspace where agents match constrained community needs, humans approve an exact plan, and agents repair disruptions without disturbing commitments that still work.
 
@@ -22,6 +32,8 @@ A conventional dashboard leaves all comparison work to the organizer. A chatbot 
 
 ## Solution
 
+Previously, organizers had to reconcile every constraint manually or rely on brittle pixel automation. CommonMesh lets the agent prepare and repair a structured plan while the organizer approves the exact real-world commitment in the same visible workspace.
+
 CommonMesh makes the website itself agent-capable. A compatible browser agent receives named tools, strict inputs, stable identifiers, structured results, and corrective error messages. It can inspect the live workspace, search compatible resources, validate assignments, and stage a proposal through the same domain logic and state store used by the human interface.
 
 The human sees projected coverage, assignments, constraints, warnings, travel, volunteer hours, the source revision, and the plan digest. Approval and execution remain separate states:
@@ -31,7 +43,7 @@ PROPOSED -> APPROVED -> COMMITTED
             human       agent
 ```
 
-The agent has no approval, resource-availability, reset, or undo tool. The visible human interface alone can approve the exact digest or change demo resource availability.
+The agent may propose a plan, but it may execute only after the human approves that exact digest. The agent has no approval, resource-availability, reset, or undo tool. The visible human interface alone can approve the exact digest or change demo resource availability.
 
 ## What the demo does
 
@@ -49,7 +61,8 @@ The judging flow demonstrates:
 8. An agent staging a one-assignment repair that reports **7 existing assignments preserved** and **1 assignment replaced**.
 9. A second human approval and agent commit restoring 100% live coverage.
 
-The detailed recording plan is in [`DEMO_VIDEO_SCRIPT.md`](DEMO_VIDEO_SCRIPT.md).
+The reproducible prompts and exact hybrid edit record are in
+[`DEMO_VIDEO_SCRIPT.md`](DEMO_VIDEO_SCRIPT.md).
 
 ## Why WebMCP is central
 
@@ -69,7 +82,7 @@ WebMCP is the product's collaboration layer, not a decorative integration. Commo
 
 Seven tools are read-only and two can write. Every input schema rejects additional properties, while runtime parsers and domain validation remain authoritative. Read tools are state-pure, list-heavy results are paginated, and community-authored text is marked as untrusted content. Tool registration follows the React lifecycle through an `AbortSignal`.
 
-This is materially different from DOM automation: the agent reads domain state directly, uses stable IDs, receives structured failures, and updates the same visible store and audit trail as the human.
+This is materially different from DOM automation: the agent reads domain state directly, uses stable IDs, and receives structured failures. Staged plans, commits, and blocked write attempts update the same visible store and audit trail as human actions, while read tools remain state-pure.
 
 ## Human approval and safety model
 
@@ -95,7 +108,9 @@ This competition build demonstrates the interaction and authorization model with
 - Stale-plan, tamper, replay, and persistence-failure protection.
 - Selective repair that replaces only assignments for affected needs.
 - Visible lifecycle, metrics, validation, and actor-labelled activity history.
-- Deterministic seeded state and confirmed reset for repeatable judging.
+- Deterministic reset restores seeded resources and baseline activity while
+  clearing assignments, staged plans, approvals, and resource-availability
+  changes.
 - Human-only failure simulation and reset controls.
 - Responsive desktop, tablet, and mobile layouts; the desktop layout is the primary judging surface.
 
@@ -152,12 +167,12 @@ Production deployment would require server-side identity and authorization, priv
 
 ## Judging evidence map
 
-The category names below follow the repository's current judging checklist. Re-check the live official rules and form immediately before submission.
+The category names below match the four equally weighted criteria fetched from the live official challenge on 2026-09-03. Re-check time-sensitive submission state immediately before submission.
 
 | Category | Strongest repository evidence | Honest boundary |
 | --- | --- | --- |
 | **WebMCP Leverage** | Nine purpose-built tools carry inspect -> search -> validate -> stage -> read -> commit -> audit; the separate human UI supplies exact-digest approval. Schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
-| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local screenshots, automated domain/store/tool tests, and a documented end-to-end run through the public WebMCP transport | The final recorded demo remains an open gate |
+| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local product-state evidence, automated domain/store/tool tests, a documented end-to-end run through the public WebMCP transport, and an independently validated 2:50 hybrid demo candidate | Explicit upload approval and verified public playback remain open gates |
 | **Potential Impact** | A specific organizer audience, realistic cross-category constraints, inspectable actions, and continuity through selective repair | No production deployment, user research, adoption, or outcome metrics are claimed |
 | **Creativity & Ambition** | The website is an agent-capable coordination system rather than a chatbot; exact-digest governance and surgical recovery are part of the domain model | Matching, volunteer platforms, and approval workflows are not claimed as individually novel |
 
@@ -173,30 +188,38 @@ npm test
 npm run build
 ```
 
-The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 public in-app-browser verification covering all nine live tool registrations, discovery, validation, staging, a blocked pre-approval commit, human approval, exact-digest commit, disruption, selective repair, a second commit, and persisted reset after reload. It explicitly leaves a recorded single-prompt model rehearsal as a separate submission gate.
+The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 public in-app-browser verification covering all nine live tool registrations, discovery, validation, staging, a blocked pre-approval commit, human approval, exact-digest commit, disruption, selective repair, a second commit, and persisted reset after reload. The rendered video is a curated hybrid of genuine WebMCP staging and approval-boundary footage with verified product-state captures; it is evidence of one demonstrated workflow, not a benchmark of arbitrary model tool selection.
 
-### Existing screenshot evidence
+### Current clean product evidence
 
-1. [`01-overview.png`](screenshots/01-overview.png) — clean state: 7 open needs, 15 available resources, 0% coverage, and no staged plan.
-2. [`02-agent-proposed-plan.png`](screenshots/02-agent-proposed-plan.png) — agent proposal with 100% projected coverage, eight assignments, metrics, and all constraints satisfied.
-3. [`03-human-approved-plan.png`](screenshots/03-human-approved-plan.png) — exact plan approved while live coverage remains 0%, proving approval is not execution.
-4. [`04-repair-plan.png`](screenshots/04-repair-plan.png) — one disrupted assignment, seven active assignments, and a proposed one-assignment repair preserving seven.
-5. [`05-committed-plan.jpg`](screenshots/05-committed-plan.jpg) — approved repair committed with 7/7 needs covered, 100% coverage, and eight active assignments.
-6. [`07-webmcp-tools-live.jpg`](screenshots/07-webmcp-tools-live.jpg) — live registration with nine tools, the 7 read / 2 write split, and the absence of an approval tool.
-7. [`08-webmcp-repair-live.jpg`](screenshots/08-webmcp-repair-live.jpg) — live selective-repair state with seven assignments preserved, one replaced, and 100% projected coverage.
-8. [`09-approval-required-live.jpg`](screenshots/09-approval-required-live.jpg) — the shared activity trail recording the agent's blocked `APPROVAL_REQUIRED` commit beside its successful staging action.
+1. [`10-final-committed-repair.png`](screenshots/10-final-committed-repair.png) — exact 2:38 frame from the rendered candidate: WebMCP live, repair committed, 7/7 needs covered, and 100% coverage.
+2. [`07-webmcp-tools-live.jpg`](screenshots/07-webmcp-tools-live.jpg) — live registration evidence with nine tools, the 7 read / 2 write split, and the absence of an approval tool.
+
+Additional captures remain as traceable video-production sources, but are not
+promoted as current UI screenshots because they predate final presentation
+copy and timestamp refinements.
 
 ## Links
 
 - **Repository:** [github.com/Alexsvensson99/CommonMesh](https://github.com/Alexsvensson99/CommonMesh) — verified public on 2026-09-03.
 - **Public demo:** [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site) — the full WebMCP workflow and persisted reset were verified in the in-app browser on 2026-09-03.
-- **Demo video:** **[PLACEHOLDER — record the verified 2–3 minute flow, upload it, and insert the public video URL]**
+- **Demo video:** Public URL pending explicit upload approval and signed-out
+  playback verification. Exact local upload copy (git-ignored):
+  `video/commonmesh-demo-final.mp4`, 2:50, SHA-256
+  `331fe8211a7f5d318cfc5f48d1ed95731e569bafedcc183307ce72ebebf21d1b`.
 - **Challenge page:** [webmcp.devpost.com](https://webmcp.devpost.com/)
 - **License:** [MIT](../LICENSE)
 
 ## Build-process disclosure
 
-**Prepared factual draft — confirm against the live form before use:** OpenAI Codex assisted with repository setup, product and interaction design iteration, implementation, debugging, automated testing, accessibility review, documentation, deployment checks, and end-to-end verification. The project owner defined the product direction, constrained the scope, set the human-approval policy, reviewed the work, and remains responsible for the final entry.
+**Prepared factual draft — confirm against the live form before use:** OpenAI
+Codex assisted with repository setup, product and interaction design iteration,
+implementation, debugging, automated testing, accessibility review,
+documentation, deployment checks, end-to-end verification, and preparation of
+the hybrid demo video, captions, thumbnail, and technical QA evidence. The
+project owner defined the product direction, constrained the scope, set the
+human-approval policy, reviewed the work, and remains responsible for the final
+entry.
 
 ## Known limitations
 
@@ -205,29 +228,35 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 publi
 - Live WebMCP execution depends on ChatGPT's in-app browser or a compatible Chrome build.
 - Seeded data is deterministic demonstration data, not a live community directory.
 - No real organization, user study, time-saving measurement, or adoption result is claimed.
-- The repository documents an end-to-end public tool-transport run, but the final one-prompt recording has not yet been added.
+- The repository documents an end-to-end public tool-transport run and the exact
+  rendered hybrid video candidate. The exact file passed independent Ultra
+  visual QA, but is not yet uploaded or publicly linked.
 
 ## Submission readiness checklist
 
 - [x] Keep project claims traceable to code, tests, repository docs, or product-state captures.
 - [x] Prepare a concise product story, technical explanation, evidence map, screenshot list, and timed demo script.
 - [x] Include the verified public repository URL.
-- [ ] **Verify the current official rules, eligibility, deadline, judging wording, and exact form fields on Devpost.**
+- [x] Verify the current official rules, eligibility, deadline, judging wording, and exact form fields on Devpost (completed 2026-09-03).
 - [x] Verify that the repository is publicly accessible without authentication.
 - [x] Deploy and verify a free, unrestricted public demo in the WebMCP-capable browser.
-- [x] Run the complete local quality gate: lint, typecheck, 49 tests, and production build all pass. Re-run it on the final deployed commit.
-- [ ] **Rehearse and record the real browser-agent flow from the mission prompt.**
-- [ ] **Upload the video, verify public playback, and replace the video placeholder.**
+- [x] Current automated suite passes: 53/53 tests.
+- [x] Render and technically validate the 170-second hybrid candidate, including genuine WebMCP staging and approval-boundary footage.
+- [x] **Independent Ultra visual QA passed on the exact rendered candidate.**
+- [ ] **Obtain explicit approval for the exact upload manifest.**
+- [ ] **Upload the approved video, wait for HD processing, verify signed-out public playback, and add the exact URL everywhere.**
 - [x] Verify the full public transport flow: discovery, validation, staging, blocked commit, approval, commit, failure, selective repair, second commit, activity, and persisted reset.
-- [ ] **Confirm the factual build-process/AI-assistance disclosure if the form asks for it.**
-- [ ] **Copy only fields actually requested by the live form; leave no placeholders in the final entry.**
+- [x] Prepare factual answers for the live form's agent/client and AI-tool questions.
+- [ ] **Run the complete final quality gate, commit and push, verify CI, and correlate the final deployed assets.**
+- [ ] **Copy only fields actually requested by the live form; leave no pending markers in the final entry.**
 
-## TODO — official form fields
+## Remaining official form and publication gates
 
-The live Devpost form was not queried during this documentation pass. Add only fields actually present in the current official form.
+The live Devpost form was queried on 2026-09-03. Technical answers are prepared in the root [`devpost-submission.md`](../devpost-submission.md); the following gates remain:
 
-- **[PLACEHOLDER — official project description field, if separate]**
-- **[PLACEHOLDER — Built With / technology field, if requested]**
-- **[PLACEHOLDER — team member details, if requested]**
-- **[PLACEHOLDER — AI/Codex disclosure, if requested and author-confirmed]**
-- **[PLACEHOLDER — any required repository, demo, image, or video fields]**
+- **Public video:** obtain explicit upload approval, upload the exact certified candidate, and add its URL only after signed-out playback testing.
+- **Submitter Type:** confirm `Individual`.
+- **Country(s):** confirm `Sweden`.
+- **Learning:** confirm `Significant`.
+- **AI career value:** confirm `Yes`.
+- **Final action:** obtain an explicit **yes, submit** immediately before submitting the entry.

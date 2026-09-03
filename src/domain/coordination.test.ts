@@ -116,6 +116,14 @@ describe('coordination constraints', () => {
     ).toContain('RESOURCE_CAPACITY_EXCEEDED')
   })
 
+  it('rejects fractional assignment quantities for discrete resources', () => {
+    const state = createSeedState()
+    const assignments = buildRecommendedAssignments(state)
+    assignments[0] = { ...assignments[0], quantity: 0.5 }
+
+    expect(errorCodes(state, assignments)).toContain('INVALID_QUANTITY')
+  })
+
   it('enforces maximum volunteer hours', () => {
     const state = createSeedState()
     const assignments = [

@@ -8,40 +8,31 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 
 **[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)**
 
-Use ChatGPT's in-app browser or a WebMCP-compatible Chrome build for live agent tools. The human interface remains fully usable in other modern browsers.
+Use ChatGPT's in-app browser or a WebMCP-compatible Chrome build for live
+agent tools. Other modern browsers can inspect the dashboard and use the
+human-only demo controls, but cannot run the WebMCP agent workflow.
 
 CommonMesh is a React application where a browser agent can discover community needs, compare constrained resources, validate a complete match plan, stage it for review, and—only after explicit human approval—commit the exact approved proposal. The product is not a chatbot: CommonMesh owns the state, rules, tools, approval gate, and visible audit trail.
 
-## Screenshots
+## Product evidence
 
-These local product-state captures show the deterministic judging flow. The
-public build has been exercised end to end through its live WebMCP transport;
-the final browser-agent recording remains a separate submission gate.
+The public build has been exercised end to end through its live WebMCP
+transport. This clean capture confirms all nine tools: seven reads, two writes,
+and deliberately no agent approval tool.
 
-**Live WebMCP repair committed — full coverage restored**
+![Nine live WebMCP tools with seven read and two write capabilities](docs/screenshots/07-webmcp-tools-live.jpg)
 
-![Committed repair with WebMCP live and 100% coverage](docs/screenshots/05-committed-plan.jpg)
+This exact frame from 2:38 in the final local video candidate shows the repaired
+plan committed through the live nine-tool WebMCP surface, with 7/7 needs covered
+and 100% coordination coverage.
 
-| Live WebMCP catalogue | Live selective repair |
-| --- | --- |
-| ![Nine live WebMCP tools with seven read and two write capabilities](docs/screenshots/07-webmcp-tools-live.jpg) | ![Live WebMCP repair preserving seven assignments and replacing one](docs/screenshots/08-webmcp-repair-live.jpg) |
+![Committed selective repair with WebMCP live and 100% coordination coverage](docs/screenshots/10-final-committed-repair.png)
 
-**Approval boundary visible in the shared activity trail**
-
-![Blocked APPROVAL_REQUIRED commit and successful agent staging in the live activity trail](docs/screenshots/09-approval-required-live.jpg)
-
-| Coordination overview | Plan review |
-| --- | --- |
-| ![Saturday Community Day dashboard](docs/screenshots/01-overview.png) | ![Coordination plan in the review surface](docs/screenshots/02-agent-proposed-plan.png) |
-| **Human approval — execution still pending** | **Selective repair — seven preserved, one replaced** |
-| ![Human-approved plan before commit](docs/screenshots/03-human-approved-plan.png) | ![Repair plan preserving seven assignments and replacing one](docs/screenshots/04-repair-plan.png) |
-
-<details>
-<summary>Compact mobile overview</summary>
-
-![CommonMesh responsive overview at 500 pixels](docs/screenshots/06-mobile-overview.png)
-
-</details>
+A 2:50 hybrid demo candidate combines genuine WebMCP staging and
+approval-boundary footage with verified product-state captures so the
+PROPOSED, APPROVED, COMMITTED, disruption, and repair states remain legible. It
+has passed technical and independent visual QA; explicit upload approval,
+public YouTube playback, and the final video URL remain open gates.
 
 ## Why CommonMesh?
 
@@ -181,7 +172,9 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. CommonMesh remains fully usable in an ordinary browser. WebMCP tools require ChatGPT's in-app browser or a compatible Chrome build.
+Open the local URL printed by Vite. An ordinary modern browser can inspect the
+dashboard and exercise the human-only demo controls. The structured agent
+workflow requires ChatGPT's in-app browser or a compatible Chrome build.
 
 For a production preview:
 

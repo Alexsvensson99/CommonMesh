@@ -697,7 +697,7 @@
 
 .coverage-donut span {
   margin-top: -2px;
-  color: #74817b;
+  color: #5d6b64;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -838,7 +838,7 @@
 .filter-row button {
   min-height: 34px;
   padding: 0 10px;
-  color: #6e7b75;
+  color: #5d6b64;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -1160,6 +1160,20 @@
   background: #1d5b3a;
 }
 
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled,
+.reject-button:disabled,
+.van-button:disabled {
+  color: #6a756f;
+  background: #eef1ef;
+  border-color: #d7ded9;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.82;
+  transform: none;
+}
+
 .secondary-button {
   color: #2f6048;
   background: #f2faf5;
@@ -1373,7 +1387,7 @@
 }
 
 .plan-score span {
-  color: #5f7969;
+  color: #526b5c;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.25;
@@ -2046,6 +2060,18 @@
   border-color: #cae3d3;
 }
 
+.webmcp-status-card.checking {
+  color: #596a62;
+  background: #f4f7f5;
+  border-color: #d8dfdb;
+}
+
+.webmcp-status-card.error {
+  color: #8a412b;
+  background: #fff5f1;
+  border-color: #eccfc3;
+}
+
 .webmcp-status-card strong {
   display: block;
   font-size: 12px;
@@ -2053,7 +2079,7 @@
 
 .webmcp-status-card p {
   margin: 4px 0 0;
-  color: #67756e;
+  color: #5f6c66;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -2286,7 +2312,8 @@
   width: min(680px, calc(100vw - 32px));
   max-height: min(760px, calc(100vh - 40px));
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: #26372f;
   background: #fff;
   border: 1px solid #cfd9d2;
@@ -2333,6 +2360,18 @@
   color: #286b46;
   background: #edf8f1;
   border-color: #cde5d5;
+}
+
+.dialog-status.checking {
+  color: #53665d;
+  background: #f3f6f4;
+  border-color: #d7dfda;
+}
+
+.dialog-status.error {
+  color: #8a412b;
+  background: #fff4ef;
+  border-color: #eccdc0;
 }
 
 .tool-list {
@@ -2460,7 +2499,7 @@ footer {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #78857f;
+  color: #5f6c66;
 }
 
 footer > div {

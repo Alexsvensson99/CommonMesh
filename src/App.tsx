@@ -108,19 +108,27 @@ function formatDate(date: string) {
 }
 
 function formatActivityTime(timestamp: string) {
-  return new Intl.DateTimeFormat('en-GB', {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Stockholm',
+    day: '2-digit',
+    month: 'short',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
-  }).format(new Date(timestamp))
+    hourCycle: 'h23',
+  }).formatToParts(new Date(timestamp))
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? ''
+  return `${part('day')} ${part('month')} · ${part('hour')}:${part('minute')}:${part('second')}`
 }
 
 function formatActivityDate(timestamp: string) {
   return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Stockholm',
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -208,7 +216,9 @@ function WebMCPBadge({
     ? `WebMCP live · ${status.toolCount} tools`
     : checking
       ? 'Detecting WebMCP'
-      : 'WebMCP preview mode'
+      : status.state === 'error'
+        ? 'WebMCP connection error'
+        : 'WebMCP unavailable'
 
   return (
     <button
@@ -223,6 +233,8 @@ function WebMCPBadge({
         <Radio size={15} />
       ) : checking ? (
         <CircleDotDashed size={15} />
+      ) : status.state === 'error' ? (
+        <TriangleAlert size={15} />
       ) : (
         <WifiOff size={15} />
       )}
@@ -526,7 +538,7 @@ function PlanPanel({
             <span className={`plan-state ${visibleState.toLowerCase()}`}>
               {visibleState}
             </span>
-            <span>workspace revision {plan.sourceRevision}</span>
+            <span>planned against revision {plan.sourceRevision}</span>
           </div>
           <h3>{plan.id}</h3>
           <p>{plan.intent}</p>
@@ -1017,6 +1029,14 @@ function WebMCPToolsDialog({
     [],
   )
   const readCount = tools.filter((tool) => tool.access === 'read').length
+  const StatusIcon =
+    status.state === 'connected'
+      ? Radio
+      : status.state === 'checking'
+        ? CircleDotDashed
+        : status.state === 'error'
+          ? TriangleAlert
+          : WifiOff
 
   return (
     <AccessibleDialog
@@ -1048,10 +1068,10 @@ function WebMCPToolsDialog({
       </div>
 
       <div
-        className={`dialog-status ${status.state === 'connected' ? 'connected' : 'unavailable'}`}
+        className={`dialog-status ${status.state}`}
         role="status"
       >
-        {status.state === 'connected' ? <Radio size={17} /> : <WifiOff size={17} />}
+        <StatusIcon size={17} />
         <span>
           {status.state === 'connected'
             ? `Live registration confirmed · ${readCount} read · ${tools.length - readCount} write`
@@ -1063,7 +1083,12 @@ function WebMCPToolsDialog({
         </span>
       </div>
 
-      <div className="tool-list" role="list" aria-label="Exposed WebMCP tools">
+      <div
+        className="tool-list"
+        role="list"
+        aria-label="Exposed WebMCP tools. Scroll for the complete list."
+        tabIndex={0}
+      >
         {tools.map((tool) => (
           <div className="tool-row" role="listitem" key={tool.name}>
             <div>
@@ -1167,12 +1192,37 @@ function DemoControls({
 }: {
   webMCP: WebMCPStatus
   vanUnavailable: boolean
-  vanName: string
+  vanName?: string
   onReset: () => void
   onVanChange: (unavailable: boolean) => void
   onTools: () => void
 }) {
-  const webMCPReady = webMCP.state === 'connected'
+  const webMCPStatus = {
+    checking: {
+      icon: CircleDotDashed,
+      heading: 'Detecting WebMCP support',
+      detail: 'Checking this browser for structured agent tool registration.',
+    },
+    connected: {
+      icon: Radio,
+      heading: `WebMCP live · ${webMCP.toolCount} tools registered`,
+      detail: 'Agent actions update this same workspace and activity trail.',
+    },
+    unavailable: {
+      icon: WifiOff,
+      heading: 'WebMCP unavailable in this browser',
+      detail:
+        'The dashboard remains available for inspection. Open in ChatGPT or a WebMCP-enabled Chrome build for agent tools.',
+    },
+    error: {
+      icon: TriangleAlert,
+      heading: 'WebMCP registration needs attention',
+      detail: webMCP.detail,
+    },
+  }[webMCP.state]
+  const WebMCPStatusIcon = webMCPStatus.icon
+  const canTestVanFailure = Boolean(vanName)
+
   return (
     <section className="panel demo-panel" aria-labelledby="demo-controls-title">
       <div className="panel-heading">
@@ -1188,34 +1238,41 @@ function DemoControls({
         </button>
         <button
           type="button"
-          className={vanUnavailable ? 'secondary-button' : 'van-button'}
-          onClick={() => onVanChange(!vanUnavailable)}
+          className={
+            vanUnavailable || !canTestVanFailure
+              ? 'secondary-button'
+              : 'van-button'
+          }
+          onClick={() => {
+            if (canTestVanFailure) onVanChange(!vanUnavailable)
+          }}
+          disabled={!canTestVanFailure}
           aria-label={
-            vanUnavailable
+            !canTestVanFailure
+              ? 'Commit a plan to enable the resource failure demo'
+              : vanUnavailable
               ? `Restore failed van: ${vanName}`
               : `Mark assigned van unavailable: ${vanName}`
           }
-          title={vanName}
+          title={vanName ?? 'Commit a plan to test van failure'}
         >
-          {vanUnavailable ? <RefreshCcw size={16} /> : <Truck size={16} />}
-          {vanUnavailable
+          {vanUnavailable && canTestVanFailure ? (
+            <RefreshCcw size={16} />
+          ) : (
+            <Truck size={16} />
+          )}
+          {!canTestVanFailure
+            ? 'Commit plan to test van failure'
+            : vanUnavailable
             ? 'Restore failed van'
             : 'Mark assigned van unavailable'}
         </button>
       </div>
-      <div className={`webmcp-status-card ${webMCPReady ? 'connected' : ''}`}>
-        {webMCPReady ? <Radio size={18} /> : <WifiOff size={18} />}
+      <div className={`webmcp-status-card ${webMCP.state}`}>
+        <WebMCPStatusIcon size={18} />
         <div>
-          <strong>
-            {webMCPReady
-              ? `WebMCP live · ${webMCP.toolCount} tools registered`
-              : 'WebMCP unsupported in this browser'}
-          </strong>
-          <p>
-            {webMCPReady
-              ? 'Agent actions update this same workspace and activity trail.'
-              : 'The human interface remains fully usable. Open in ChatGPT or a supported Chrome build for agent tools.'}
-          </p>
+          <strong>{webMCPStatus.heading}</strong>
+          <p>{webMCPStatus.detail}</p>
           <button type="button" className="inline-link" onClick={onTools}>
             View tool catalogue <ArrowRight size={14} />
           </button>
@@ -1241,6 +1298,8 @@ function App() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const planHeadingRef = useRef<HTMLHeadingElement>(null)
+  const stagingRef = useRef(false)
+  const stagingGenerationRef = useRef(0)
   const planFocusKey = state.stagedPlan
     ? `${state.stagedPlan.id}:${getPlanPresentationState(state.stagedPlan, state.resourceRevision)}`
     : 'empty'
@@ -1286,10 +1345,7 @@ function App() {
       resource.id === previousCommittedVanResourceId &&
       resource.availability.status === 'unavailable',
   )
-  const demoVan =
-    previousFailedVan ??
-    assignedVan ??
-    state.resources.find((resource) => resource.id === 'res-northside-van')
+  const demoVan = previousFailedVan ?? assignedVan
   const disruptedAssignments = state.committedAssignments.filter(
     (assignment) =>
       state.resources.find((resource) => resource.id === assignment.resourceId)
@@ -1308,10 +1364,13 @@ function App() {
     : undefined
 
   const stageRecommended = async () => {
-    if (staging) return
+    if (stagingRef.current) return
+    stagingRef.current = true
+    const generation = ++stagingGenerationRef.current
     setStaging(true)
     try {
       const result = await coordinationStore.stageRecommendedPlan('human')
+      if (generation !== stagingGenerationRef.current) return
       if (result.ok) {
         setNotice({
           kind: 'success',
@@ -1321,12 +1380,16 @@ function App() {
         setNotice({ kind: 'error', message: result.error.message })
       }
     } catch {
+      if (generation !== stagingGenerationRef.current) return
       setNotice({
         kind: 'error',
         message: 'The plan could not be staged. Please try again.',
       })
     } finally {
-      setStaging(false)
+      if (generation === stagingGenerationRef.current) {
+        stagingRef.current = false
+        setStaging(false)
+      }
     }
   }
 
@@ -1373,6 +1436,9 @@ function App() {
   }
 
   const resetDemo = () => {
+    stagingGenerationRef.current += 1
+    stagingRef.current = false
+    setStaging(false)
     const result = coordinationStore.resetDemo()
     setNeedFilter('all')
     setResourceFilter('all')
@@ -1570,7 +1636,11 @@ function App() {
                   ),
                 )}
               </div>
-              <div className="card-scroll">
+              <div
+                className="card-scroll"
+                tabIndex={0}
+                aria-label="Community needs. Scroll for the complete list."
+              >
                 {filteredNeeds.length === 0 ? (
                   <EmptyFilterState subject="needs" />
                 ) : (
@@ -1658,7 +1728,11 @@ function App() {
                   </button>
                 ))}
               </div>
-              <div className="card-scroll">
+              <div
+                className="card-scroll"
+                tabIndex={0}
+                aria-label="Community resources. Scroll for the complete list."
+              >
                 {filteredResources.length === 0 ? (
                   <EmptyFilterState subject="resources" />
                 ) : (
@@ -1711,7 +1785,7 @@ function App() {
             <DemoControls
               webMCP={webMCP}
               vanUnavailable={demoVan?.availability.status === 'unavailable'}
-              vanName={demoVan?.name ?? 'Cargo van'}
+              vanName={demoVan?.name}
               onReset={() => setResetOpen(true)}
               onVanChange={(unavailable) => {
                 if (demoVan) updateAvailability(demoVan.id, unavailable)

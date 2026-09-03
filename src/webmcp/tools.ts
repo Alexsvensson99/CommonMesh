@@ -45,9 +45,9 @@ const assignmentSchema: JsonSchema = {
       maxLength: MAX_ID_LENGTH,
     },
     quantity: {
-      type: 'number',
+      type: 'integer',
       description: 'Quantity this resource supplies to the need.',
-      minimum: 0.01,
+      minimum: 1,
     },
     start: {
       type: 'string',
@@ -133,6 +133,15 @@ function numberField(input: Record<string, unknown>, field: string) {
   return value
 }
 
+function isCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  )
+}
+
 function parseAssignments(input: unknown): AssignmentInput[] {
   if (!Array.isArray(input) || input.length === 0) {
     throw new ToolInputError('assignments must be a non-empty array.')
@@ -148,9 +157,13 @@ function parseAssignments(input: unknown): AssignmentInput[] {
     }
     objectInput(candidate, ['needId', 'resourceId', 'quantity', 'start', 'end'])
     const quantity = candidate.quantity
-    if (typeof quantity !== 'number' || !Number.isFinite(quantity)) {
+    if (
+      typeof quantity !== 'number' ||
+      !Number.isInteger(quantity) ||
+      quantity <= 0
+    ) {
       throw new ToolInputError(
-        `assignments[${index}].quantity must be a finite number.`,
+        `assignments[${index}].quantity must be a positive integer.`,
       )
     }
     const start = stringField(candidate, 'start', true, MAX_TIMESTAMP_LENGTH)!
@@ -203,8 +216,8 @@ function parseNeedSearch(input: unknown): NeedSearch {
   if (status && !['open', 'covered', 'disrupted'].includes(status)) {
     throw new ToolInputError('status must be open, covered, or disrupted.')
   }
-  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new ToolInputError('date must use YYYY-MM-DD format.')
+  if (date && !isCalendarDate(date)) {
+    throw new ToolInputError('date must be a valid YYYY-MM-DD calendar date.')
   }
   return {
     query: stringField(record, 'query', false, MAX_QUERY_LENGTH),
@@ -241,8 +254,8 @@ function parseResourceSearch(input: unknown): ResourceSearch {
   const date = stringField(record, 'date')
   const start = stringField(record, 'start')
   const end = stringField(record, 'end')
-  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new ToolInputError('date must use YYYY-MM-DD format.')
+  if (date && !isCalendarDate(date)) {
+    throw new ToolInputError('date must be a valid YYYY-MM-DD calendar date.')
   }
   if (start && !isIso8601Timestamp(start)) {
     throw new ToolInputError(
@@ -602,6 +615,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             type: 'string',
             description: 'Event date in YYYY-MM-DD format.',
             maxLength: 10,
+            format: 'date',
           },
           urgency: { type: 'string', enum: ['standard', 'high'] },
           status: { type: 'string', enum: ['open', 'covered', 'disrupted'] },
@@ -697,6 +711,7 @@ export function createCommonMeshTools(store: CoordinationStore): WebMCPTool[] {
             type: 'string',
             description: 'Availability date in YYYY-MM-DD format.',
             maxLength: 10,
+            format: 'date',
           },
           start: {
             type: 'string',

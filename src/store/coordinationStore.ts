@@ -77,7 +77,7 @@ function isAssignment(value: unknown): value is AssignmentInput {
     typeof value.needId === 'string' &&
     typeof value.resourceId === 'string' &&
     typeof value.quantity === 'number' &&
-    Number.isFinite(value.quantity) &&
+    Number.isInteger(value.quantity) &&
     value.quantity > 0 &&
     typeof value.start === 'string' &&
     typeof value.end === 'string' &&
@@ -389,6 +389,7 @@ export class CoordinationStore {
   private readonly createDigest: PlanDigestFactory
   private activitySequence = 0
   private stageRequestSequence = 0
+  private resetSequence = 0
 
   constructor(options?: {
     storage?: StorageLike | null
@@ -728,6 +729,7 @@ export class CoordinationStore {
       )
     }
     const stageRequest = ++this.stageRequestSequence
+    const resetSequence = this.resetSequence
     const sourceRevision = this.state.resourceRevision
     const normalized = normalizeAssignments(assignments)
     const validation = validateMatchPlan(this.state, normalized)
@@ -751,6 +753,25 @@ export class CoordinationStore {
     }
 
     const digest = await this.createDigest(sourceRevision, normalized)
+    if (stageRequest !== this.stageRequestSequence) {
+      if (resetSequence === this.resetSequence) {
+        this.recordActivity(
+          actor,
+          'stage_match_plan',
+          'Discarded a superseded staging request',
+          'A newer plan was staged first.',
+          'failed',
+        )
+      }
+      return {
+        ok: false,
+        error: {
+          code: 'STAGE_SUPERSEDED',
+          message: 'A newer plan replaced this staging request.',
+        },
+        nextAction: 'Inspect the currently staged plan before continuing.',
+      }
+    }
     if (signal?.aborted) {
       return this.failure(
         actor,
@@ -761,23 +782,6 @@ export class CoordinationStore {
           message: 'Plan staging was cancelled before any proposal changed.',
         },
       )
-    }
-    if (stageRequest !== this.stageRequestSequence) {
-      this.recordActivity(
-        actor,
-        'stage_match_plan',
-        'Discarded a superseded staging request',
-        'A newer plan was staged first.',
-        'failed',
-      )
-      return {
-        ok: false,
-        error: {
-          code: 'STAGE_SUPERSEDED',
-          message: 'A newer plan replaced this staging request.',
-        },
-        nextAction: 'Inspect the currently staged plan before continuing.',
-      }
     }
     if (sourceRevision !== this.state.resourceRevision) {
       this.recordActivity(
@@ -1309,6 +1313,7 @@ export class CoordinationStore {
 
   resetDemo() {
     this.stageRequestSequence += 1
+    this.resetSequence += 1
     const reset = createSeedState()
     reset.activity = this.activity(
       reset,

@@ -580,6 +580,27 @@ describe('CoordinationStore search and approval boundary', () => {
     })
   })
 
+  it('rejects persisted plans with fractional assignment quantities', async () => {
+    const store = makeStore()
+    const staged = await store.stageRecommendedPlan('agent')
+    expect(staged.ok).toBe(true)
+    if (!staged.ok) return
+    const corrupted = structuredClone(store.getState())
+    if (!corrupted.stagedPlan) return
+    corrupted.stagedPlan.assignments[0].quantity = 0.5
+
+    const reloaded = new CoordinationStore({
+      storage: {
+        getItem: () => JSON.stringify(corrupted),
+        setItem: () => undefined,
+      },
+      now: fixedNow,
+    })
+
+    expect(reloaded.getState().stagedPlan).toBeNull()
+    expect(reloaded.getState().committedAssignments).toEqual([])
+  })
+
   it('rejects mismatched committed plans and invalid undo references', async () => {
     const committedStore = makeStore()
     const staged = await committedStore.stageRecommendedPlan('agent')
@@ -701,5 +722,71 @@ describe('CoordinationStore search and approval boundary', () => {
       action: 'stage_match_plan',
       outcome: 'failed',
     })
+  })
+
+  it('does not append late staging activity after a demo reset', async () => {
+    let releaseDigest: (() => void) | undefined
+    const digestGate = new Promise<void>((resolve) => {
+      releaseDigest = resolve
+    })
+    const store = new CoordinationStore({
+      storage: null,
+      now: fixedNow,
+      initialState: createSeedState(),
+      createDigest: async (revision, assignments) => {
+        await digestGate
+        return createPlanDigest(revision, assignments)
+      },
+    })
+
+    const staging = store.stageRecommendedPlan('agent')
+    store.resetDemo()
+    releaseDigest?.()
+
+    expect(await staging).toMatchObject({
+      ok: false,
+      error: { code: 'STAGE_SUPERSEDED' },
+    })
+    expect(store.getState().stagedPlan).toBeNull()
+    expect(store.getState().activity.map((entry) => entry.action)).toEqual([
+      'reset_demo',
+      'demo_ready',
+    ])
+  })
+
+  it('keeps reset activity clean when an in-flight stage is also aborted', async () => {
+    let releaseDigest: (() => void) | undefined
+    const digestGate = new Promise<void>((resolve) => {
+      releaseDigest = resolve
+    })
+    const store = new CoordinationStore({
+      storage: null,
+      now: fixedNow,
+      initialState: createSeedState(),
+      createDigest: async (revision, assignments) => {
+        await digestGate
+        return createPlanDigest(revision, assignments)
+      },
+    })
+    const controller = new AbortController()
+    const staging = store.stagePlan(
+      buildRecommendedAssignments(store.getState()),
+      'Cover every open need',
+      'agent',
+      controller.signal,
+    )
+
+    store.resetDemo()
+    controller.abort()
+    releaseDigest?.()
+
+    expect(await staging).toMatchObject({
+      ok: false,
+      error: { code: 'STAGE_SUPERSEDED' },
+    })
+    expect(store.getState().activity.map((entry) => entry.action)).toEqual([
+      'reset_demo',
+      'demo_ready',
+    ])
   })
 })

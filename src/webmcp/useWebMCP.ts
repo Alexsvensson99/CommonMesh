@@ -21,8 +21,17 @@ export function useWebMCP() {
     let disposed = false
     let unregister: (() => void) | undefined
     let registrationInFlight: Promise<boolean> | null = null
+    let retryTimer: number | undefined
     let attempts = 0
+    let registrationErrorRecorded = false
     const lifecycleController = new AbortController()
+
+    const startSlowRetry = () => {
+      if (disposed || retryTimer !== undefined) return
+      retryTimer = window.setInterval(() => {
+        void register()
+      }, 5000)
+    }
 
     const register = () => {
       if (disposed || unregister) return Promise.resolve(true)
@@ -42,6 +51,10 @@ export function useWebMCP() {
             return true
           }
           unregister = registration.unregister
+          if (retryTimer !== undefined) {
+            window.clearInterval(retryTimer)
+            retryTimer = undefined
+          }
           setStatus({
             state: 'connected',
             toolCount: registration.count,
@@ -63,13 +76,17 @@ export function useWebMCP() {
               detail:
                 'WebMCP tools could not be registered. Reload or use a supported browser.',
             })
-            coordinationStore.recordActivity(
-              'system',
-              'webmcp_registration',
-              'WebMCP registration failed',
-              error instanceof Error ? error.name : 'REGISTRATION_ERROR',
-              'failed',
-            )
+            if (!registrationErrorRecorded) {
+              registrationErrorRecorded = true
+              coordinationStore.recordActivity(
+                'system',
+                'webmcp_registration',
+                'WebMCP registration failed',
+                error instanceof Error ? error.name : 'REGISTRATION_ERROR',
+                'failed',
+              )
+            }
+            startSlowRetry()
           }
           return true
         }
@@ -93,6 +110,7 @@ export function useWebMCP() {
             toolCount: 0,
             detail: 'Open in ChatGPT or WebMCP-enabled Chrome',
           })
+          startSlowRetry()
         }
       })
     }, 750)
@@ -100,6 +118,7 @@ export function useWebMCP() {
     return () => {
       disposed = true
       window.clearInterval(timer)
+      if (retryTimer !== undefined) window.clearInterval(retryTimer)
       lifecycleController.abort()
       unregister?.()
     }

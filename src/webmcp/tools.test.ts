@@ -62,6 +62,10 @@ describe('CommonMesh WebMCP tools', () => {
         .items?.properties?.start.format,
     ).toBe('date-time')
     expect(
+      byName(tools, 'validate_match_plan').inputSchema.properties?.assignments
+        .items?.properties?.quantity,
+    ).toMatchObject({ type: 'integer', minimum: 1 })
+    expect(
       byName(tools, 'search_resources').inputSchema.properties?.end.format,
     ).toBe('date-time')
     expect(names).not.toContain('approve_staged_plan')
@@ -244,12 +248,18 @@ describe('CommonMesh WebMCP tools', () => {
       await byName(tools, 'search_needs').execute({ category: 'spaceship' }),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
     expect(
+      await byName(tools, 'search_needs').execute({ date: '2026-02-31' }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
+    expect(
       await byName(tools, 'search_needs').execute({ unexpected: true }),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
     expect(
       await byName(tools, 'search_resources').execute({
         start: '09/05/2026 08:00',
       }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
+    expect(
+      await byName(tools, 'search_resources').execute({ date: '2026-02-31' }),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
     expect(
       await byName(tools, 'validate_match_plan').execute({
@@ -260,6 +270,19 @@ describe('CommonMesh WebMCP tools', () => {
         ),
       }),
     ).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } })
+    expect(
+      await byName(tools, 'validate_match_plan').execute({
+        assignments: assignments.map((assignment, index) =>
+          index === 0 ? { ...assignment, quantity: 0.5 } : assignment,
+        ),
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_INPUT',
+        message: 'assignments[0].quantity must be a positive integer.',
+      },
+    })
   })
 
   it('does not stage a proposal after the execution is cancelled', async () => {

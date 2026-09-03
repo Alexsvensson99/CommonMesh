@@ -2,7 +2,7 @@
 
 This matrix documents the repeatable behaviors that matter in the judging demo.
 It separates automated contract evidence, live browser-transport verification,
-and the remaining submission-recording gate.
+and the evidence contained in the rendered hybrid video candidate.
 
 Public verification on 2026-09-03 confirmed all nine live registrations in the
 Codex in-app browser and exercised the real WebMCP transport on the
@@ -15,8 +15,13 @@ assignment. A confirmed reset then restored 7 open needs, 15 available
 resources, no assignments, no staged plan, and 0% coverage; reloading the public
 origin returned the same clean persisted state with no browser-console errors.
 
-This verifies the application contract through the public browser transport. A
-recorded single-prompt model rehearsal remains a separate submission gate.
+This verifies the application contract through the public browser transport.
+The exact 2:50 video candidate combines genuine WebMCP staging and
+approval-boundary footage with verified product-state captures. It demonstrates
+one curated, verified run; it is not a benchmark of arbitrary model
+tool-selection behavior. Independent Ultra visual QA passed on the exact
+hash; explicit upload approval and verified public playback remain separate
+submission gates.
 
 | Scenario | Expected WebMCP behavior | Required invariant | Evidence |
 | --- | --- | --- | --- |
@@ -32,20 +37,36 @@ recorded single-prompt model rehearsal remains a separate submission gate.
 | Reset repeatably | Confirm reset in the human UI, then reload the public origin | Seed state persists with no assignments, staged plan, approval, or unavailable resource | Automated store tests; public reload verified 2026-09-03 |
 | Stay within authority | Inspect the WebMCP catalogue | No approval, availability, reset, or undo tool is exposed to the agent | Automated registration test plus catalogue UI |
 
-## Submission recording checklist
+## Hybrid video evidence status
 
-The full sequence has been verified against the public deployment through the
-WebMCP-enabled Codex in-app browser. Before submission, repeat it from the
-mission prompt in the exact judge environment and record evidence of:
+The exact local candidate is
+`/private/tmp/commonmesh-demo-final-331fe821.mp4`, runtime 170.000 seconds,
+SHA-256
+`331fe8211a7f5d318cfc5f48d1ed95731e569bafedcc183307ce72ebebf21d1b`.
+It is rendered and passes technical and independent visual QA, but is not
+uploaded or public.
 
-1. nine registered tools and the 7 read / 2 write split;
-2. an actual agent-authored proposal;
-3. a blocked pre-approval commit;
-4. human approval followed by exact-digest commit;
-5. one disrupted assignment after the human failure action; and
-6. a repaired plan showing seven preserved and one replaced assignment.
+The candidate contains:
 
-The automated suite and manual browser transport run validate the application
-contract. They do not by themselves measure whether an arbitrary model selects
-the ideal tool sequence from one prompt, so that claim remains dependent on the
-recorded model rehearsal.
+1. the verified nine-tool catalogue and 7 read / 2 write split;
+2. genuine browser footage of the agent invoking `stage_match_plan` through
+   the discovered WebMCP interface;
+3. genuine shared-activity footage of the blocked pre-approval commit;
+4. verified product-state captures for human approval and exact-digest commit;
+5. a verified capture of exactly one disrupted assignment after the human
+   failure action; and
+6. verified repair and final-state captures showing seven assignments
+   preserved, one replaced, and full coverage restored.
+
+The edit does not present omitted prompts, clicks, discovery calls, or repair
+calls as continuous footage. The automated suite and full public browser run
+remain the evidence for the complete contract; the hybrid candidate makes its
+decisive states readable for judges.
+
+Before treating the video as submission evidence:
+
+- [x] complete independent Ultra visual QA on the exact hash-locked candidate;
+- [ ] obtain explicit approval for the exact YouTube upload manifest;
+- [ ] upload, wait for HD processing, and verify public signed-out playback;
+  and
+- [ ] insert the exact verified URL here and in every submission surface.

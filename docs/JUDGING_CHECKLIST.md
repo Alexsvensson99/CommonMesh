@@ -15,13 +15,18 @@ Official question: does the project use WebMCP thoroughly and skillfully through
 - Runtime parsers and the domain layer revalidate all inputs instead of relying on schemas as enforcement.
 - Read operations use `readOnlyHint`, are state-pure, and return compact results; list-heavy outputs are paginated. Tools returning community-authored descriptions use `untrustedContentHint`.
 - Tool registration is bound to an `AbortSignal` and cleaned up with the React lifecycle.
-- Agent and human actions use the same `CoordinationStore`, so tool calls update the visible product state and audit trail.
+- Agent writes and human actions use the same `CoordinationStore`, so staged plans, commits, and blocked writes update the visible product state and audit trail; read tools remain state-pure.
 - Structured failures include stable codes and a useful next action.
 - Human approval, resource-failure, and reset capabilities are deliberately absent from the WebMCP catalogue. No undo tool is exposed.
 
 ### Current limitation
 
-WebMCP is still browser-dependent and experimental. CommonMesh detects unsupported browsers and keeps the human UI usable, but live tool execution must be judged in ChatGPT's in-app browser or a compatible Chrome build. The repository has deterministic integration tests and a documented evaluation matrix, not a separate model-behavior evaluation harness.
+WebMCP is still browser-dependent and experimental. CommonMesh detects
+unsupported browsers; they can still inspect the dashboard and use the
+human-only demo controls, but live tool execution must be judged in ChatGPT's
+in-app browser or a compatible Chrome build. The repository has deterministic
+integration tests and a documented evaluation matrix, not a separate
+model-behavior evaluation harness.
 
 ### Assessment
 
@@ -50,11 +55,19 @@ Official question: is this a working, runnable project with a complete and coher
 
 ### Current limitation
 
-The project is a client-side deterministic demo. A public end-to-end WebMCP transport run and local product-state captures through a committed repair are available, but the submission video remains a separate gate.
+The project is a client-side deterministic demo. A public end-to-end WebMCP
+transport run and verified product-state captures through a committed repair
+are available. A 2:50 hybrid candidate now combines genuine WebMCP staging and
+approval-boundary footage with those readable states; it passed independent
+Ultra visual QA. Explicit upload approval and verified public playback remain
+separate gates.
 
 ### Assessment
 
-Strong execution evidence across the public build, local captures, automated tests, and verified WebMCP transport. The final submission still needs a concise recording of the complete judge workflow.
+Strong execution evidence across the public build, verified captures,
+automated tests, real WebMCP transport, and the independently validated hybrid
+candidate. Public video evidence must not be claimed until the exact candidate
+passes signed-out YouTube playback verification.
 
 ## 3. Potential Impact
 
@@ -102,7 +115,11 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
-- The repository is paired with a verified public demo, live WebMCP catalogue and repair captures, and a documented end-to-end transport run; a concise browser-agent video is still required before submission readiness is claimed.
+- The repository is paired with a verified public demo, a live WebMCP catalogue,
+  repair evidence, a documented end-to-end transport run, and a rendered
+  170-second hybrid candidate, independently verified on its exact hash.
+  Submission readiness still depends on explicit upload approval and verified
+  public YouTube playback.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)

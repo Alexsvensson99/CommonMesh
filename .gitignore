@@ -13,6 +13,13 @@ dist-ssr
 coverage
 .vite
 *.local
+.devpost-hackathon-state.json
+
+# Local demo-video renders (keep scripts, manifests, and thumbnails tracked)
+docs/video/*.aiff
+docs/video/*.mkv
+docs/video/*.mp4
+docs/video/*.wav
 
 # Local environment files
 .env

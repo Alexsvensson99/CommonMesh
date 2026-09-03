@@ -311,11 +311,11 @@ export function validateMatchPlan(
       )
     }
 
-    if (!Number.isFinite(assignment.quantity) || assignment.quantity <= 0) {
+    if (!Number.isInteger(assignment.quantity) || assignment.quantity <= 0) {
       errors.push(
         issue(
           'INVALID_QUANTITY',
-          'Assignment quantity must be a finite number greater than zero.',
+          'Assignment quantity must be a positive whole number.',
           index,
           assignment.needId,
           assignment.resourceId,
