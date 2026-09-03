@@ -2,8 +2,9 @@
 
 CommonMesh
 
-> **Canonical Devpost field copy.** Use this file for the final project text,
-> testing instructions, links, and submission-field values. The longer
+> **Canonical submission record.** The exact live project description is kept
+> in [`docs/DEVPOST_DESCRIPTION.md`](docs/DEVPOST_DESCRIPTION.md). Use this file
+> for testing instructions, links, and submission-field values. The longer
 > [`docs/DEVPOST_SUBMISSION.md`](docs/DEVPOST_SUBMISSION.md) is supporting
 > judging evidence, not a second field-value source.
 >
