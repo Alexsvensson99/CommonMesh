@@ -2,6 +2,11 @@
 
 > **Recording status:** Script ready; final video URL is **[PLACEHOLDER — not recorded/uploaded in this pass]**. Target runtime is 2:50, with an acceptable final cut of 2:35–2:59. Trim agent wait time, not evidence states.
 
+The narration is also prepared as an importable
+[`DEMO_VIDEO_CAPTIONS.srt`](DEMO_VIDEO_CAPTIONS.srt) template. Its timing matches
+this 2:50 edit; retime the cues after the final cut rather than changing the
+factual wording to hide a mismatched screen state.
+
 ## Recording setup
 
 - Record in ChatGPT's in-app browser or a compatible Chrome build with the CommonMesh app and agent conversation both visible when practical.
@@ -174,5 +179,6 @@ Before uploading:
 - [ ] Confirm the recording shows real WebMCP calls, not only the human shortcut buttons.
 - [ ] Confirm no private account information, credentials, notifications, or unrelated tabs are visible.
 - [ ] Confirm the video has clear English narration or accurate English captions.
+- [ ] Import `DEMO_VIDEO_CAPTIONS.srt`, retime it to the final cut, and spot-check every cue against the visible state.
 - [ ] Upload the video, test public playback in a signed-out session, and replace **[PLACEHOLDER — video URL]** in both submission documents.
 - [ ] After preserving the committed end-state shot, use **Reset Demo** and verify the start checkpoint before another take.
