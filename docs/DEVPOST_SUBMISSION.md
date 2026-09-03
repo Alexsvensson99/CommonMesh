@@ -144,7 +144,7 @@ Separate implementations would make the demo easy to desynchronize. Routing both
 
 CommonMesh is aimed at community organizers coordinating volunteers and shared local capacity. The prototype shows how an agent can reduce comparison work while a coordinator retains control over commitments affecting people, vehicles, food, equipment, and accessible space. Its selective-repair model also shows how coordination can continue when one resource fails instead of discarding unaffected work.
 
-The current evidence is prototype evidence: a concrete scenario, repeatable workflow, structured safeguards, automated tests, local product-state captures, and a recorded in-app-browser WebMCP evaluation in the repository. It does **not** establish adoption, time savings, or real-world organizational outcomes.
+The current evidence is prototype evidence: a concrete scenario, repeatable workflow, structured safeguards, automated tests, local product-state captures, and a documented public in-app-browser WebMCP evaluation in the repository. It does **not** establish adoption, time savings, or real-world organizational outcomes.
 
 Production deployment would require server-side identity and authorization, privacy controls, multi-user synchronization, notifications, and integrations with real inventory or volunteer systems.
 
@@ -155,7 +155,7 @@ The category names below follow the repository's current judging checklist. Re-c
 | Category | Strongest repository evidence | Honest boundary |
 | --- | --- | --- |
 | **WebMCP Leverage** | Nine purpose-built tools carry the full inspect -> search -> validate -> stage -> approve -> commit -> audit workflow; schemas, runtime parsing, annotations, pagination, lifecycle cleanup, and structured failures are implemented | WebMCP requires a compatible browser; the repo does not contain a separate model-behavior benchmark harness |
-| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local screenshots, automated domain/store/tool tests, and documented live WebMCP transport | The final recorded demo remains an open gate |
+| **Execution** | A coherent shared workspace, explicit lifecycle, deterministic reset, responsive UI, public build, local screenshots, automated domain/store/tool tests, and a documented end-to-end run through the public WebMCP transport | The final recorded demo remains an open gate |
 | **Potential Impact** | A specific organizer audience, realistic cross-category constraints, inspectable actions, and continuity through selective repair | No production deployment, user research, adoption, or outcome metrics are claimed |
 | **Creativity & Ambition** | The website is an agent-capable coordination system rather than a chatbot; exact-digest governance and surgical recovery are part of the domain model | Matching, volunteer platforms, and approval workflows are not claimed as individually novel |
 
@@ -171,7 +171,7 @@ npm test
 npm run build
 ```
 
-The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-app-browser verification covering all nine live tool registrations, discovery, validation, staging, a blocked pre-approval commit, human approval, exact-digest commit, disruption, selective repair, and a second commit. It explicitly leaves a recorded single-prompt model rehearsal as a separate submission gate.
+The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 public in-app-browser verification covering all nine live tool registrations, discovery, validation, staging, a blocked pre-approval commit, human approval, exact-digest commit, disruption, selective repair, a second commit, and persisted reset after reload. It explicitly leaves a recorded single-prompt model rehearsal as a separate submission gate.
 
 ### Existing screenshot evidence
 
@@ -184,7 +184,7 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 ## Links
 
 - **Repository:** [github.com/Alexsvensson99/CommonMesh](https://github.com/Alexsvensson99/CommonMesh) — verified public on 2026-09-03.
-- **Public demo:** [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site) — verified in the WebMCP-capable in-app browser on 2026-09-03.
+- **Public demo:** [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site) — the full WebMCP workflow and persisted reset were verified in the in-app browser on 2026-09-03.
 - **Demo video:** **[PLACEHOLDER — record the verified 2–3 minute flow, upload it, and insert the public video URL]**
 - **Challenge page:** [webmcp.devpost.com](https://webmcp.devpost.com/)
 - **License:** [MIT](../LICENSE)
@@ -200,7 +200,7 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 - Live WebMCP execution depends on ChatGPT's in-app browser or a compatible Chrome build.
 - Seeded data is deterministic demonstration data, not a live community directory.
 - No real organization, user study, time-saving measurement, or adoption result is claimed.
-- The repository documents a live tool-transport run, but the final one-prompt recording has not yet been added.
+- The repository documents an end-to-end public tool-transport run, but the final one-prompt recording has not yet been added.
 
 ## Submission readiness checklist
 
@@ -213,7 +213,7 @@ The repository's [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md) records a 2026-09-03 in-ap
 - [x] Run the complete quality gate on the deployed source commit: lint, typecheck, 40 tests, and production build all pass.
 - [ ] **Rehearse and record the real browser-agent flow from the mission prompt.**
 - [ ] **Upload the video, verify public playback, and replace the video placeholder.**
-- [x] Replace the public demo placeholder after opening the deployed URL and checking registration, staging, approval-without-execution, and reset.
+- [x] Verify the full public transport flow: discovery, validation, staging, blocked commit, approval, commit, failure, selective repair, second commit, activity, and persisted reset.
 - [ ] **Confirm the factual build-process/AI-assistance disclosure if the form asks for it.**
 - [ ] **Copy only fields actually requested by the live form; leave no placeholders in the final entry.**
 

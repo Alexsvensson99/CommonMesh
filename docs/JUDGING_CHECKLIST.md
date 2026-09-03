@@ -46,10 +46,11 @@ Official question: is this a working, runnable project with a complete and coher
 - Empty, invalid, stale, missing-approval, unavailable-resource, unsupported-browser, and filtered-no-result states have intentional user-facing copy.
 - Desktop is the primary layout; tablet and mobile layouts reflow without removing core functions.
 - Automated tests cover the domain, store, and tool registration/flow.
+- The public deployment has been exercised end to end through the real in-app-browser WebMCP transport, including the blocked commit, both approval/commit cycles, selective repair, activity inspection, and persisted reset after reload.
 
 ### Current limitation
 
-The project is a client-side deterministic demo. A public build and local product-state captures through a committed repair are available, but the submission video remains a separate gate.
+The project is a client-side deterministic demo. A public end-to-end WebMCP transport run and local product-state captures through a committed repair are available, but the submission video remains a separate gate.
 
 ### Assessment
 
@@ -100,7 +101,7 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
-- The repository is paired with a verified public demo; a concise browser-agent video is still required before submission readiness is claimed.
+- The repository is paired with a verified public demo and a documented end-to-end transport run; a concise browser-agent video is still required before submission readiness is claimed.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)

@@ -13,8 +13,8 @@ CommonMesh is a React application where a browser agent can discover community n
 ## Screenshots
 
 These local product-state captures show the deterministic judging flow. The
-public build is live; the final browser-agent recording remains a separate
-submission gate.
+public build has been exercised end to end through its live WebMCP transport;
+the final browser-agent recording remains a separate submission gate.
 
 | Coordination overview | Plan review |
 | --- | --- |
@@ -160,6 +160,9 @@ This client-side competition demo proves the interaction and authorization model
 
 The verified public build is available at
 [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site).
+Its full plan, approval, commitment, disruption, selective-repair, audit, and
+persisted-reset flow was verified in the WebMCP-capable in-app browser on
+2026-09-03.
 
 Requirements: Node.js 20.19+ or 22.12+ and npm.
 
