@@ -8,15 +8,19 @@ CommonMesh is a React application where a browser agent can discover community n
 
 ## Screenshots
 
-Competition screenshots will be added here after the final hosted demo is captured.
+These local product-state captures show the deterministic judging flow. A
+verified hosted URL and live browser-agent recording remain separate submission
+gates.
 
-Suggested captures:
+| Coordination overview | Plan review |
+| --- | --- |
+| ![Saturday Community Day dashboard](docs/screenshots/01-overview.png) | ![Coordination plan in the review surface](docs/screenshots/02-agent-proposed-plan.png) |
+| **Human approval — execution still pending** | **Selective repair — seven preserved, one replaced** |
+| ![Human-approved plan before commit](docs/screenshots/03-human-approved-plan.png) | ![Repair plan preserving seven assignments and replacing one](docs/screenshots/04-repair-plan.png) |
 
-- the Saturday Community Day overview and coordination metrics;
-- an Agent Proposed Plan before approval;
-- the PROPOSED → APPROVED → COMMITTED lifecycle;
-- the isolated van-failure warning and one-assignment repair; and
-- the WebMCP Tools catalogue and Human + Agent Activity trail.
+**Approved repair committed — full coverage restored**
+
+![Committed repair with 100% live coverage](docs/screenshots/05-committed-plan.jpg)
 
 ## Why CommonMesh?
 
@@ -51,7 +55,7 @@ Chrome's WebMCP guidance similarly emphasizes clear tool strategy, semantic defi
 7. The human approves that exact digest in the UI.
 8. The agent may then commit the approved digest.
 9. CommonMesh rejects missing approval, changed digests, stale revisions, invalid plans, and replay.
-10. Every successful or blocked action appears in the Human + Agent Activity trail.
+10. Every state-changing or blocked write action appears in the Human + Agent Activity trail. Read tools are intentionally state-pure.
 
 The lifecycle is intentionally explicit:
 
@@ -99,7 +103,8 @@ There is no hidden agent-only state and no duplicate agent implementation. Both 
 
 ## WebMCP Tools
 
-CommonMesh registers eleven tools:
+CommonMesh registers nine focused tools: seven read-only capabilities and two
+writes for the approval-gated plan lifecycle.
 
 | Tool | Purpose | Access |
 | --- | --- | --- |
@@ -112,12 +117,15 @@ CommonMesh registers eleven tools:
 | `get_staged_plan` | Read the exact proposal, digest, revision, validation, and approval state | Read |
 | `commit_approved_plan` | Commit only the exact human-approved digest | Write: approval-gated |
 | `get_activity_log` | Read the visible human, agent, and system audit trail | Read |
-| `set_resource_availability` | Change a demo resource and trigger disruption detection | Write: reversible demo state |
-| `undo_last_commit` | Restore the exact assignment state before the latest commit | Write: reversible |
 
 Every input schema sets `additionalProperties: false`. Runtime parsing and domain validation remain authoritative because schema hints alone do not enforce business rules.
 
-Read tools use `readOnlyHint`. Tools returning community-authored text use `untrustedContentHint`. CommonMesh exposes no WebMCP approval tool.
+Read tools use `readOnlyHint` and never mutate or persist state. Results are
+compact, and list-heavy results are paginated to keep agent context focused. Tools returning
+community-authored text use `untrustedContentHint`. CommonMesh exposes no
+WebMCP approval, resource-availability, reset, or undo tool; those human demo
+capabilities remain outside the agent authority boundary. Approval, resource
+availability, and reset are visible human controls.
 
 ## Trust & Safety Model
 
@@ -126,12 +134,14 @@ Read tools use `readOnlyHint`. Tools returning community-authored text use `untr
 - Only the visible human UI can create an approval record.
 - Staging a changed plan removes any previous approval.
 - Changing resource state invalidates a pending approval and makes the proposal stale.
-- Commit revalidates the complete plan immediately before mutation.
+- Commit recomputes the digest and revalidates the complete plan immediately before mutation.
 - An unapproved, stale, mismatched, invalid, consumed, or superseded operation returns a structured error and appears as blocked activity.
 - Repair plans replace assignments only for targeted needs; unaffected commitments are preserved.
 - Community-authored descriptions are explicitly labelled untrusted for agents.
 - Tool registration is same-origin by default and bound to the React lifecycle.
-- Demo reset restores seeded resources, clears plans and approvals, removes assignments, and persists the clean state.
+- Published state snapshots are deeply frozen and persisted state is structurally validated before use.
+- State-changing operations are transactional: if browser storage rejects a write, the visible state is left unchanged and the error remains dismissible.
+- Demo reset restores seeded resources, clears plans and approvals, removes assignments, and does not claim success if the clean state could not be persisted.
 
 This client-side competition demo proves the interaction and authorization model inside one browser session. It is not a production identity or multi-user authorization system; those require a server-side trust boundary.
 
@@ -164,19 +174,28 @@ npm test
 npm run build
 ```
 
-The suite covers search, compatibility signals, capacity, skills, time windows, distance, maximum hours, overbooking, deterministic digests, staging, rejection, exact-digest approval, blocked commits, stale-state invalidation, approval consumption, selective repair, repair impact metrics, undo, persisted reset behavior, and all WebMCP registrations.
+The suite covers search, partial contribution signals, capacity, skills, time
+windows, distance, maximum hours, overbooking, deterministic digests, staging,
+strict tool input, cancellation, read purity, bounded tool output, exact-digest
+approval, digest-tamper rejection, stale-state invalidation, approval
+consumption, commit cancellation, selective repair, repair impact metrics, undo,
+persisted lifecycle integrity, transactional storage failures, escaped-input
+output budgets, and all WebMCP registrations.
+
+See [`docs/WEBMCP_EVALS.md`](docs/WEBMCP_EVALS.md) for the repeatable tool-flow
+evaluation matrix and its automated or manual evidence.
 
 ## Demo Script
 
 1. Reset Demo and point out the clean state: 7 needs, 15 available resources, 0% coverage.
-2. Open **WebMCP Tools** to show the eleven live read/write capabilities and the absence of an approval tool.
+2. Open **WebMCP Tools** to show the nine capabilities, the 7 read / 2 write split, and the absence of an approval tool.
 3. Give the browser agent the provided mission prompt.
 4. Let the agent inspect, search, validate, and stage the complete plan.
 5. Point out **Agent Proposed Plan**, 100% projected coverage, constraint status, efficiency metrics, and the PROPOSED lifecycle step.
 6. Ask the agent to commit before approval. Show the structured `APPROVAL_REQUIRED` result and blocked activity.
 7. Click **Approve Plan**. Emphasize that the state is APPROVED, not COMMITTED.
 8. Ask the agent to commit the exact digest. Confirm 100% live coverage and COMMITTED state.
-9. Click **Mark primary van unavailable**. Confirm that one assignment requires attention and seven remain active.
+9. As the human, click **Mark primary van unavailable**. Confirm that one assignment requires attention and seven remain active.
 10. Ask the agent to repair only the affected need. Show **7 existing assignments preserved** and **1 assignment replaced**.
 11. Approve and commit the repair. Confirm full coverage and review the complete Human + Agent Activity trail.
 12. Reset again to prove the demo is repeatable.

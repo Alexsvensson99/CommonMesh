@@ -89,6 +89,7 @@ export type StagedPlan = MatchPlan & {
   digest: string
   sourceRevision: number
   createdAt: string
+  proposedBy: 'agent' | 'human'
   status: StagedPlanStatus
   approval: PlanApproval | null
 }

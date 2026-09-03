@@ -38,7 +38,7 @@ import {
   categoryLabel,
   formatTimeWindow,
   getCoordinationSnapshot,
-  validateMatchPlan,
+  validateStagedPlan,
 } from './domain/coordination'
 import type {
   ActivityEntry,
@@ -78,6 +78,20 @@ const categoryTones: Record<NeedCategory, string> = {
 type Notice = {
   kind: 'success' | 'error' | 'info'
   message: string
+}
+
+type PlanPresentationState = 'PROPOSED' | 'APPROVED' | 'COMMITTED' | 'STALE'
+
+function getPlanPresentationState(
+  plan: StagedPlan,
+  resourceRevision: number,
+): PlanPresentationState {
+  if (plan.status !== 'committed' && plan.sourceRevision !== resourceRevision) {
+    return 'STALE'
+  }
+  if (plan.status === 'staged') return 'PROPOSED'
+  if (plan.status === 'approved') return 'APPROVED'
+  return 'COMMITTED'
 }
 
 function quantityLabel(quantity: number, unit: string) {
@@ -409,6 +423,7 @@ function PlanLifecycle({
                 : ''
           }
           key={step}
+          aria-current={!stale && index === activeIndex ? 'step' : undefined}
         >
           <span>{index < activeIndex ? <Check size={13} /> : index + 1}</span>
           <strong>{step}</strong>
@@ -436,7 +451,7 @@ function PlanAssignment({
   const unavailable = resource.availability.status === 'unavailable'
 
   return (
-    <div className={`plan-assignment ${unavailable ? 'invalid' : ''}`}>
+    <li className={`plan-assignment ${unavailable ? 'invalid' : ''}`}>
       <div className={`assignment-icon ${categoryTones[need.category]}`}>
         <Icon size={16} />
       </div>
@@ -446,13 +461,13 @@ function PlanAssignment({
           {resource.name} · {quantityLabel(assignment.quantity, need.unit)}
         </span>
       </div>
-      {replacement && <span className="replacement-chip">Replacement</span>}
+      {replacement && <span className="replacement-chip">Replaced</span>}
       {unavailable ? (
         <TriangleAlert size={17} className="assignment-error" />
       ) : (
         <CheckCircle2 size={17} className="assignment-check" />
       )}
-    </div>
+    </li>
   )
 }
 
@@ -468,7 +483,7 @@ function EmptyPlan({ onStage }: { onStage: () => void }) {
         place a proposal here. Nothing executes until you approve it.
       </p>
       <button type="button" className="secondary-button" onClick={onStage}>
-        <Sparkles size={16} /> Stage deterministic demo plan
+        <Sparkles size={16} /> Stage sample plan
       </button>
     </div>
   )
@@ -488,25 +503,20 @@ function PlanPanel({
   const state = useCoordinationState()
   if (!plan) return <EmptyPlan onStage={onStage} />
 
-  const validation = validateMatchPlan(state, plan.assignments)
+  const validation = validateStagedPlan(state, plan)
   const stale =
     plan.sourceRevision !== state.resourceRevision && plan.status !== 'committed'
   const approved = plan.status === 'approved' && !stale
   const committed = plan.status === 'committed'
   const issues = [...validation.errors, ...validation.warnings]
   const isRepair = validation.metrics.replacedAssignments > 0
-  const visibleState = stale
-    ? 'STALE'
-    : committed
-      ? 'COMMITTED'
-      : approved
-        ? 'APPROVED'
-        : 'PROPOSED'
+  const visibleState = getPlanPresentationState(plan, state.resourceRevision)
 
   return (
     <div className="plan-content">
-      <div className="agent-proposal-label">
-        <Bot size={16} /> Agent Proposed Plan
+      <div className={`agent-proposal-label ${plan.proposedBy}`}>
+        {plan.proposedBy === 'agent' ? <Bot size={16} /> : <Sparkles size={16} />}
+        {plan.proposedBy === 'agent' ? 'Agent Proposed Plan' : 'Demo Shortcut Plan'}
       </div>
       <PlanLifecycle status={plan.status} stale={stale} />
 
@@ -571,7 +581,7 @@ function PlanPanel({
         </span>
       </div>
 
-      <div className="assignment-list" aria-label="Proposed assignments">
+      <ul className="assignment-list" aria-label="Proposed assignments">
         {plan.assignments.map((assignment) => (
           <PlanAssignment
             assignment={assignment}
@@ -580,7 +590,7 @@ function PlanPanel({
             key={`${assignment.needId}-${assignment.resourceId}`}
           />
         ))}
-      </div>
+      </ul>
 
       <div className="plan-validation-summary">
         <div>
@@ -811,8 +821,11 @@ function OperationalSummary({
             icon: ClipboardCheck,
           }
   const HealthIcon = health.icon
+  const planState = state.stagedPlan
+    ? getPlanPresentationState(state.stagedPlan, state.resourceRevision)
+    : null
   const planLabel = state.stagedPlan
-    ? `${state.stagedPlan.id} · ${state.stagedPlan.status.toUpperCase()}`
+    ? `${state.stagedPlan.id} · ${planState}${planState === 'STALE' ? ' — RESTAGE' : ''}`
     : 'No plan staged'
 
   return (
@@ -1018,8 +1031,9 @@ function WebMCPToolsDialog({
           <span className="section-kicker">Judge & developer view</span>
           <h2 id="webmcp-tools-title">WebMCP Tools</h2>
           <p id="webmcp-tools-description">
-            The live page exposes {tools.length} structured capabilities to
-            browser agents.
+            {status.state === 'connected'
+              ? `This page exposes ${tools.length} structured capabilities to browser agents.`
+              : `This page defines ${tools.length} structured capabilities. Live agent access depends on WebMCP registration.`}
           </p>
         </div>
         <button
@@ -1041,7 +1055,11 @@ function WebMCPToolsDialog({
         <span>
           {status.state === 'connected'
             ? `Live registration confirmed · ${readCount} read · ${tools.length - readCount} write`
-            : 'Informational catalogue · live registration needs a WebMCP-enabled browser'}
+            : status.state === 'checking'
+              ? 'Checking whether this browser supports WebMCP registration'
+              : status.state === 'error'
+                ? 'Registration failed · reload or use a WebMCP-enabled browser'
+                : 'Informational catalogue · WebMCP is unavailable in this browser'}
         </span>
       </div>
 
@@ -1216,7 +1234,7 @@ function App() {
   const [resetOpen, setResetOpen] = useState(false)
 
   useEffect(() => {
-    if (!notice) return
+    if (!notice || notice.kind === 'error') return
     const timer = window.setTimeout(() => setNotice(null), 4500)
     return () => window.clearTimeout(timer)
   }, [notice])
@@ -1240,6 +1258,8 @@ function App() {
       state.resources.find((resource) => resource.id === assignment.resourceId)
         ?.availability.status === 'unavailable',
   )
+  const activeAssignmentCount =
+    state.committedAssignments.length - disruptedAssignments.length
   const affectedAssignment = disruptedAssignments[0]
   const affectedNeed = affectedAssignment
     ? state.needs.find((need) => need.id === affectedAssignment.needId)
@@ -1316,15 +1336,16 @@ function App() {
   }
 
   const resetDemo = () => {
-    coordinationStore.resetDemo()
+    const result = coordinationStore.resetDemo()
     setNeedFilter('all')
     setResourceFilter('all')
     setToolsOpen(false)
     setResetOpen(false)
     setNotice({
-      kind: 'success',
-      message:
-        'Demo restored: 7 needs, 15 available resources, no plan, approval, or assignments.',
+      kind: result.persisted ? 'success' : 'error',
+      message: result.persisted
+        ? 'Demo restored: 7 needs, 15 available resources, no plan, approval, or assignments.'
+        : 'Demo was not reset because the clean state could not be saved. Enable browser storage or free space, then try again.',
     })
   }
 
@@ -1370,6 +1391,7 @@ function App() {
               type="button"
               onClick={() => setToolsOpen(true)}
               aria-haspopup="dialog"
+              aria-label="Open WebMCP tools"
             >
               <Wrench size={16} />
               <span>Tools</span>
@@ -1452,9 +1474,7 @@ function App() {
                 <span className="metric-label">Coordination coverage</span>
                 <div className="metric-line">
                   <strong>{snapshot.coveragePercent}%</strong>
-                  <span>
-                    {state.committedAssignments.length} active assignments
-                  </span>
+                  <span>{activeAssignmentCount} active assignments</span>
                 </div>
               </div>
             </article>
@@ -1532,11 +1552,25 @@ function App() {
               <div className="panel-heading">
                 <div>
                   <span className="section-kicker">Human approval checkpoint</span>
-                  <h2>Agent plan</h2>
+                  <h2>Plan review</h2>
                 </div>
-                <div className="agent-presence">
-                  <Bot size={16} />
-                  Agent-visible
+                <div
+                  className={`agent-presence ${webMCP.state === 'connected' ? 'connected' : 'ready'}`}
+                >
+                  {webMCP.state === 'connected' ? (
+                    <Radio size={16} />
+                  ) : webMCP.state === 'checking' ? (
+                    <Bot size={16} />
+                  ) : (
+                    <WifiOff size={16} />
+                  )}
+                  {webMCP.state === 'connected'
+                    ? 'WebMCP live'
+                    : webMCP.state === 'checking'
+                      ? 'Checking WebMCP'
+                      : webMCP.state === 'error'
+                        ? 'Registration failed'
+                        : 'WebMCP unavailable'}
                 </div>
               </div>
               <PlanPanel

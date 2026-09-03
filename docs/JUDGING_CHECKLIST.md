@@ -8,20 +8,20 @@ Official question: does the project use WebMCP thoroughly and skillfully through
 
 ### Evidence
 
-- CommonMesh registers eleven imperative WebMCP tools through `document.modelContext.registerTool(...)`.
-- Seven tools read state or validate without mutation; four tools stage or change state.
-- Tools cover the complete demonstrated workflow: inspect, search, compare, validate, stage, read staged state, commit an approved digest, inspect activity, change availability, and undo.
+- CommonMesh registers nine imperative WebMCP tools through `document.modelContext.registerTool(...)`.
+- Seven tools read state or validate without mutation; two tools stage or commit a plan.
+- Tools cover the complete agent workflow: inspect, search, compare, validate, stage, read staged state, commit an approved digest, and inspect activity.
 - Tool inputs use explicit JSON Schemas with `additionalProperties: false`.
 - Runtime parsers and the domain layer revalidate all inputs instead of relying on schemas as enforcement.
-- Read operations use `readOnlyHint` and tools returning community-authored descriptions use `untrustedContentHint`.
+- Read operations use `readOnlyHint`, are state-pure, and return compact results; list-heavy outputs are paginated. Tools returning community-authored descriptions use `untrustedContentHint`.
 - Tool registration is bound to an `AbortSignal` and cleaned up with the React lifecycle.
 - Agent and human actions use the same `CoordinationStore`, so tool calls update the visible product state and audit trail.
 - Structured failures include stable codes and a useful next action.
-- The human approval capability is deliberately absent from the WebMCP catalogue.
+- Human approval, resource-failure, and reset capabilities are deliberately absent from the WebMCP catalogue. No undo tool is exposed.
 
 ### Current limitation
 
-WebMCP is still browser-dependent and experimental. CommonMesh detects unsupported browsers and keeps the human UI usable, but live tool execution must be judged in ChatGPT's in-app browser or a compatible Chrome build. The repository has deterministic integration tests, not a separate model-behavior evaluation harness.
+WebMCP is still browser-dependent and experimental. CommonMesh detects unsupported browsers and keeps the human UI usable, but live tool execution must be judged in ChatGPT's in-app browser or a compatible Chrome build. The repository has deterministic integration tests and a documented evaluation matrix, not a separate model-behavior evaluation harness.
 
 ### Assessment
 
@@ -40,6 +40,7 @@ Official question: is this a working, runnable project with a complete and coher
 - The failure demo identifies only the assignment that depends on the unavailable van.
 - The repair plan reports seven existing assignments preserved and one assignment replaced.
 - Reset Demo has a confirmation step and persists the restored seed state.
+- Persisted state and lifecycle relationships are validated, public state snapshots are deeply frozen, and state-changing operations remain unchanged when storage rejects a write.
 - The activity trail differentiates Human, Agent, and System actors plus succeeded, blocked, and informational outcomes.
 - The WebMCP Tools dialog lists every exposed tool with its purpose and read/write status.
 - Empty, invalid, stale, missing-approval, unavailable-resource, unsupported-browser, and filtered-no-result states have intentional user-facing copy.
@@ -48,7 +49,7 @@ Official question: is this a working, runnable project with a complete and coher
 
 ### Current limitation
 
-The project is a client-side deterministic demo. A publicly accessible hosted build, final screenshots, and submission video are outside this repository's current verified state and remain separate submission gates.
+The project is a client-side deterministic demo. The repository includes local product-state captures through a committed repair, but a publicly accessible hosted build and submission video remain separate submission gates.
 
 ### Assessment
 
@@ -62,6 +63,7 @@ Official question: does the project make a credible and specific case for a real
 
 - The target audience is concrete: community organizers coordinating volunteers, equipment, transport, food, and accessible space.
 - The demo models real constraints including quantities, licences, availability windows, maximum hours, travel distance, overbooking, and existing commitments.
+- Splittable needs can combine partial contributions while indivisible needs still require a fully capable resource.
 - The workflow reduces comparison work while retaining human control over commitments that affect people and shared resources.
 - Selective repair demonstrates continuity: one failed resource does not invalidate unrelated work.
 - Structured results and an audit trail make agent actions inspectable by coordinators.
@@ -83,8 +85,8 @@ Official question: is the concept creative or novel, and does it differ from exi
 - CommonMesh is not an embedded chatbot. It treats the website as an agent-capable coordination system with explicit domain tools.
 - The human approval boundary is part of the data model and execution path, not a confirmation message added by the agent.
 - The same visible workspace supports initial planning, blocked execution, resource failure, and surgical repair.
-- Plan digests and revisions make approval exact and stale state visible.
-- The project combines community resource matching, agent planning, human governance, and reversible execution in one focused workflow.
+- Plan digests and revisions make approval exact and stale state visible; commit recomputes the digest before mutation.
+- The project combines community resource matching, agent planning, human governance, disruption detection, and selective repair in one focused workflow.
 
 ### Current limitation
 
@@ -98,7 +100,8 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 
 - The rules require a working project to remain available to judges free of charge and without restriction during judging.
 - Judges may evaluate from the submission text, images, and video without running the project, so those materials must make the lifecycle and repair workflow understandable on their own.
-- The repository should be paired with a verified public demo link, final screenshots, and a concise video before submission readiness is claimed.
+- The repository should be paired with a verified public demo link and a concise browser-agent video before submission readiness is claimed.
+- The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 ## Primary references
 

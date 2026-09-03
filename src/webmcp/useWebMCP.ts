@@ -20,56 +20,65 @@ export function useWebMCP() {
   useEffect(() => {
     let disposed = false
     let unregister: (() => void) | undefined
+    let registrationInFlight: Promise<boolean> | null = null
     let attempts = 0
     const lifecycleController = new AbortController()
 
-    const register = async () => {
-      if (disposed || unregister) return true
+    const register = () => {
+      if (disposed || unregister) return Promise.resolve(true)
+      if (registrationInFlight) return registrationInFlight
       const modelContext = document.modelContext
-      if (!modelContext) return false
+      if (!modelContext) return Promise.resolve(false)
 
-      try {
-        const registration = await registerCommonMeshTools(
-          modelContext,
-          coordinationStore,
-          lifecycleController.signal,
-        )
-        if (disposed) {
-          registration.unregister()
-          return true
-        }
-        unregister = registration.unregister
-        setStatus({
-          state: 'connected',
-          toolCount: registration.count,
-          detail: `${registration.count} structured tools are live`,
-        })
-        coordinationStore.recordActivity(
-          'system',
-          'webmcp_connected',
-          'WebMCP connected to the shared workspace',
-          `${registration.count} structured tools registered on this page`,
-          'info',
-        )
-        return true
-      } catch (error) {
-        if (!disposed) {
+      const operation = (async () => {
+        try {
+          const registration = await registerCommonMeshTools(
+            modelContext,
+            coordinationStore,
+            lifecycleController.signal,
+          )
+          if (disposed) {
+            registration.unregister()
+            return true
+          }
+          unregister = registration.unregister
           setStatus({
-            state: 'error',
-            toolCount: 0,
-            detail:
-              'WebMCP tools could not be registered. Reload or use a supported browser.',
+            state: 'connected',
+            toolCount: registration.count,
+            detail: `${registration.count} structured tools are live`,
           })
           coordinationStore.recordActivity(
             'system',
-            'webmcp_registration',
-            'WebMCP registration failed',
-            error instanceof Error ? error.name : 'REGISTRATION_ERROR',
-            'failed',
+            'webmcp_connected',
+            'WebMCP connected to the shared workspace',
+            `${registration.count} structured tools registered on this page`,
+            'info',
           )
+          return true
+        } catch (error) {
+          if (!disposed) {
+            setStatus({
+              state: 'error',
+              toolCount: 0,
+              detail:
+                'WebMCP tools could not be registered. Reload or use a supported browser.',
+            })
+            coordinationStore.recordActivity(
+              'system',
+              'webmcp_registration',
+              'WebMCP registration failed',
+              error instanceof Error ? error.name : 'REGISTRATION_ERROR',
+              'failed',
+            )
+          }
+          return true
         }
-        return true
-      }
+      })()
+      registrationInFlight = operation
+      void operation.finally(() => {
+        if (registrationInFlight === operation) registrationInFlight = null
+      })
+      return operation
     }
 
     void register()

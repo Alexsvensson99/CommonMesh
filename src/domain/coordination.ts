@@ -9,6 +9,7 @@ import type {
   PlanValidationIssue,
   PlanValidationResult,
   Resource,
+  StagedPlan,
 } from './types'
 
 const encoder = new TextEncoder()
@@ -602,6 +603,23 @@ export function validateMatchPlan(
       estimatedVolunteerHours,
     },
   }
+}
+
+export function validateStagedPlan(
+  state: CoordinationState,
+  plan: StagedPlan,
+): PlanValidationResult {
+  const baselineAssignments =
+    plan.status === 'committed' && state.lastCommit?.planId === plan.id
+      ? state.lastCommit.previousAssignments
+      : state.committedAssignments
+
+  return validateMatchPlan(
+    baselineAssignments === state.committedAssignments
+      ? state
+      : { ...state, committedAssignments: baselineAssignments },
+    plan.assignments,
+  )
 }
 
 function assignmentFor(

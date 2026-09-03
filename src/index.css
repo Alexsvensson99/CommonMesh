@@ -59,8 +59,9 @@ button {
 button:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid rgba(40, 126, 78, 0.38);
+  outline: 3px solid #1d6c47;
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px #ffffff;
 }
 
 button:disabled {

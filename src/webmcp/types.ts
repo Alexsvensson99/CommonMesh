@@ -7,14 +7,14 @@ export type JsonSchema = {
   enum?: readonly (string | number | boolean | null)[]
   minimum?: number
   maximum?: number
+  maxItems?: number
+  maxLength?: number
   additionalProperties?: boolean
 }
 
 export type WebMCPToolAnnotations = {
   readOnlyHint?: boolean
   untrustedContentHint?: boolean
-  destructiveHint?: boolean
-  idempotentHint?: boolean
 }
 
 export type WebMCPExecutionContext = {

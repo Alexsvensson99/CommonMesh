@@ -7,6 +7,7 @@ import {
   getResourceConstraints,
   normalizeAssignments,
   validateMatchPlan,
+  validateStagedPlan,
 } from '../domain/coordination'
 import { createSeedState } from '../data/seed'
 import type {
@@ -22,6 +23,7 @@ import type {
 
 const STORAGE_KEY = 'commonmesh-demo-state-v2'
 const MAX_ACTIVITY_ENTRIES = 80
+const MAX_PLAN_INTENT_LENGTH = 240
 
 type Listener = () => void
 
@@ -29,6 +31,275 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
 type PlanDigestFactory = typeof createPlanDigest
 
 const activityOutcomes: ActivityOutcome[] = ['success', 'failed', 'info']
+const splittableUnits = new Set(['chairs', 'people', 'portions'])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function isBoundedSerializedString(
+  value: unknown,
+  maxLength: number,
+): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= maxLength &&
+    JSON.stringify(value).length - 2 <= maxLength
+  )
+}
+
+function isAssignment(value: unknown): value is AssignmentInput {
+  const start = isRecord(value) ? Date.parse(String(value.start)) : Number.NaN
+  const end = isRecord(value) ? Date.parse(String(value.end)) : Number.NaN
+  return (
+    isRecord(value) &&
+    typeof value.needId === 'string' &&
+    typeof value.resourceId === 'string' &&
+    typeof value.quantity === 'number' &&
+    Number.isFinite(value.quantity) &&
+    value.quantity > 0 &&
+    typeof value.start === 'string' &&
+    typeof value.end === 'string' &&
+    Number.isFinite(start) &&
+    Number.isFinite(end) &&
+    start < end
+  )
+}
+
+function isCommittedAssignment(
+  value: unknown,
+): value is CoordinationState['committedAssignments'][number] {
+  return (
+    isAssignment(value) &&
+    isRecord(value) &&
+    typeof (value as Record<string, unknown>).planId === 'string' &&
+    typeof (value as Record<string, unknown>).committedAt === 'string'
+  )
+}
+
+function isNeed(value: unknown): value is CoordinationState['needs'][number] {
+  const start = isRecord(value) ? Date.parse(String(value.start)) : Number.NaN
+  const end = isRecord(value) ? Date.parse(String(value.end)) : Number.NaN
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.description === 'string' &&
+    ['equipment', 'transport', 'people', 'food', 'space'].includes(
+      String(value.category),
+    ) &&
+    typeof value.quantity === 'number' &&
+    Number.isFinite(value.quantity) &&
+    value.quantity > 0 &&
+    typeof value.unit === 'string' &&
+    typeof value.location === 'string' &&
+    typeof value.date === 'string' &&
+    typeof value.start === 'string' &&
+    typeof value.end === 'string' &&
+    Number.isFinite(start) &&
+    Number.isFinite(end) &&
+    start < end &&
+    (value.urgency === 'standard' || value.urgency === 'high') &&
+    isStringArray(value.requiredSkills) &&
+    typeof value.createdBy === 'string'
+  )
+}
+
+function isResource(
+  value: unknown,
+): value is CoordinationState['resources'][number] {
+  const availabilityStart =
+    isRecord(value) && isRecord(value.availability)
+      ? Date.parse(String(value.availability.start))
+      : Number.NaN
+  const availabilityEnd =
+    isRecord(value) && isRecord(value.availability)
+      ? Date.parse(String(value.availability.end))
+      : Number.NaN
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.description === 'string' &&
+    ['equipment', 'transport', 'people', 'food', 'space'].includes(
+      String(value.type),
+    ) &&
+    typeof value.capacity === 'number' &&
+    Number.isFinite(value.capacity) &&
+    value.capacity > 0 &&
+    typeof value.unit === 'string' &&
+    typeof value.owner === 'string' &&
+    typeof value.distanceKm === 'number' &&
+    Number.isFinite(value.distanceKm) &&
+    value.distanceKm >= 0 &&
+    isRecord(value.availability) &&
+    typeof value.availability.start === 'string' &&
+    typeof value.availability.end === 'string' &&
+    Number.isFinite(availabilityStart) &&
+    Number.isFinite(availabilityEnd) &&
+    availabilityStart < availabilityEnd &&
+    (value.availability.status === 'available' ||
+      value.availability.status === 'unavailable') &&
+    (value.maxHours === null ||
+      (typeof value.maxHours === 'number' &&
+        Number.isFinite(value.maxHours) &&
+        value.maxHours > 0)) &&
+    isStringArray(value.skills)
+  )
+}
+
+function isActivity(
+  value: unknown,
+): value is CoordinationState['activity'][number] {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    (value.actor === 'agent' || value.actor === 'human' || value.actor === 'system') &&
+    activityOutcomes.includes(value.outcome as ActivityOutcome) &&
+    typeof value.action === 'string' &&
+    typeof value.summary === 'string' &&
+    typeof value.timestamp === 'string' &&
+    (value.detail === undefined || typeof value.detail === 'string')
+  )
+}
+
+function isStagedPlan(value: unknown): value is StagedPlan | null {
+  if (value === null) return true
+  const structurallyValid =
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.digest === 'string' &&
+    /^sha256:[0-9a-f]{64}$/.test(value.digest) &&
+    isBoundedSerializedString(value.intent, MAX_PLAN_INTENT_LENGTH) &&
+    Number.isInteger(value.sourceRevision) &&
+    Number(value.sourceRevision) >= 0 &&
+    typeof value.createdAt === 'string' &&
+    (value.proposedBy === 'agent' || value.proposedBy === 'human') &&
+    (value.status === 'staged' ||
+      value.status === 'approved' ||
+      value.status === 'committed') &&
+    Array.isArray(value.assignments) &&
+    value.assignments.length > 0 &&
+    value.assignments.every(isAssignment) &&
+    (value.approval === null ||
+      (isRecord(value.approval) &&
+        typeof value.approval.digest === 'string' &&
+        typeof value.approval.approvedAt === 'string' &&
+        value.approval.approvedBy === 'human-ui'))
+  if (!structurallyValid || !isRecord(value)) return false
+  if (value.status === 'staged') return value.approval === null
+  return isRecord(value.approval) && value.approval.digest === value.digest
+}
+
+function isUndoFrame(
+  value: unknown,
+): value is CoordinationState['lastCommit'] {
+  if (value === null) return true
+  return (
+    isRecord(value) &&
+    typeof value.planId === 'string' &&
+    typeof value.digest === 'string' &&
+    typeof value.createdAt === 'string' &&
+    Array.isArray(value.previousAssignments) &&
+    value.previousAssignments.every(isCommittedAssignment)
+  )
+}
+
+function isCoordinationState(value: unknown): value is CoordinationState {
+  if (!isRecord(value)) return false
+  if (
+    value.schemaVersion !== 2 ||
+    typeof value.eventName !== 'string' ||
+    typeof value.eventDate !== 'string' ||
+    typeof value.hubLocation !== 'string' ||
+    typeof value.maxDistanceKm !== 'number' ||
+    !Number.isFinite(value.maxDistanceKm) ||
+    value.maxDistanceKm < 0 ||
+    !Number.isInteger(value.resourceRevision) ||
+    Number(value.resourceRevision) < 1 ||
+    !Array.isArray(value.needs) ||
+    !value.needs.every(isNeed) ||
+    !Array.isArray(value.resources) ||
+    !value.resources.every(isResource) ||
+    !Array.isArray(value.committedAssignments) ||
+    !value.committedAssignments.every(isCommittedAssignment) ||
+    !isStagedPlan(value.stagedPlan) ||
+    !Array.isArray(value.activity) ||
+    !value.activity.every(isActivity) ||
+    !isUndoFrame(value.lastCommit)
+  ) {
+    return false
+  }
+
+  const needs = value.needs as CoordinationState['needs']
+  const resources = value.resources as CoordinationState['resources']
+  const committedAssignments =
+    value.committedAssignments as CoordinationState['committedAssignments']
+  const stagedPlan = value.stagedPlan as StagedPlan | null
+  const lastCommit = value.lastCommit as CoordinationState['lastCommit']
+  const needIds = new Set(needs.map((need) => need.id))
+  const resourceIds = new Set(resources.map((resource) => resource.id))
+  const assignmentsReferenceKnownEntities = [
+    ...committedAssignments,
+    ...(stagedPlan?.assignments ?? []),
+    ...(lastCommit?.previousAssignments ?? []),
+  ].every(
+    (assignment) =>
+      needIds.has(assignment.needId) && resourceIds.has(assignment.resourceId),
+  )
+  if (!assignmentsReferenceKnownEntities) return false
+
+  if (stagedPlan?.status === 'committed') {
+    if (
+      !lastCommit ||
+      lastCommit.planId !== stagedPlan.id ||
+      lastCommit.digest !== stagedPlan.digest
+    ) {
+      return false
+    }
+    const assignmentKey = (assignment: AssignmentInput) =>
+      [
+        assignment.needId,
+        assignment.resourceId,
+        assignment.quantity,
+        assignment.start,
+        assignment.end,
+      ].join('\u0000')
+    const stagedPairKeys = stagedPlan.assignments.map(
+      (assignment) => `${assignment.needId}\u0000${assignment.resourceId}`,
+    )
+    if (new Set(stagedPairKeys).size !== stagedPairKeys.length) return false
+    const expectedAssignments = stagedPlan.assignments
+      .map(assignmentKey)
+      .sort()
+    const committedForPlan = committedAssignments
+      .filter((assignment) => assignment.planId === stagedPlan.id)
+      .map(assignmentKey)
+      .sort()
+    if (
+      expectedAssignments.length !== committedForPlan.length ||
+      expectedAssignments.some(
+        (assignment, index) => assignment !== committedForPlan[index],
+      )
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
+    return value
+  }
+  Object.values(value).forEach((item) => deepFreeze(item))
+  return Object.freeze(value)
+}
 
 function getBrowserStorage(): StorageLike | null {
   if (typeof window === 'undefined') return null
@@ -65,24 +336,26 @@ function loadState(storage: StorageLike | null): CoordinationState {
   try {
     const raw = storage.getItem(STORAGE_KEY)
     if (!raw) return createSeedState()
-    const parsed = JSON.parse(raw) as CoordinationState
-    if (
-      parsed.schemaVersion !== 2 ||
-      !Array.isArray(parsed.needs) ||
-      !Array.isArray(parsed.resources) ||
-      !Array.isArray(parsed.activity)
-    ) {
+    const parsed = JSON.parse(raw) as unknown
+    if (!isRecord(parsed) || !Array.isArray(parsed.activity)) {
       return createSeedState()
     }
-    return {
+    const normalized = {
       ...parsed,
       activity: parsed.activity.map((entry) => ({
-        ...entry,
-        outcome: activityOutcomes.includes(entry.outcome)
-          ? entry.outcome
-          : 'info',
+        ...(isRecord(entry) ? entry : {}),
+        outcome:
+          isRecord(entry) &&
+          activityOutcomes.includes(entry.outcome as ActivityOutcome)
+            ? entry.outcome
+            : 'info',
       })),
+      stagedPlan:
+        isRecord(parsed.stagedPlan) && !('proposedBy' in parsed.stagedPlan)
+          ? { ...parsed.stagedPlan, proposedBy: 'agent' }
+          : parsed.stagedPlan,
     }
+    return isCoordinationState(normalized) ? normalized : createSeedState()
   } catch {
     return createSeedState()
   }
@@ -92,6 +365,7 @@ export class CoordinationStore {
   private state: CoordinationState
   private readonly listeners = new Set<Listener>()
   private readonly storage: StorageLike | null
+  private readonly persistenceRequired: boolean
   private readonly now: () => string
   private readonly createDigest: PlanDigestFactory
   private activitySequence = 0
@@ -105,11 +379,17 @@ export class CoordinationStore {
   }) {
     const browserStorage = getBrowserStorage()
     this.storage = options?.storage === undefined ? browserStorage : options.storage
+    this.persistenceRequired =
+      options?.storage === undefined
+        ? typeof window !== 'undefined'
+        : options.storage !== null
     this.now = options?.now ?? (() => new Date().toISOString())
     this.createDigest = options?.createDigest ?? createPlanDigest
-    this.state = options?.initialState
-      ? structuredClone(options.initialState)
-      : loadState(this.storage)
+    this.state = deepFreeze(
+      options?.initialState
+        ? structuredClone(options.initialState)
+        : loadState(this.storage),
+    )
   }
 
   getState = () => this.state
@@ -120,13 +400,28 @@ export class CoordinationStore {
   }
 
   private publish(nextState: CoordinationState) {
-    this.state = nextState
+    const publishedState = deepFreeze(nextState)
+    if (!this.storage && this.persistenceRequired) return false
     try {
-      this.storage?.setItem(STORAGE_KEY, JSON.stringify(nextState))
+      this.storage?.setItem(STORAGE_KEY, JSON.stringify(publishedState))
     } catch {
-      // A full or blocked localStorage must not break the live demo.
+      return false
     }
+    this.state = publishedState
     this.listeners.forEach((listener) => listener())
+    return true
+  }
+
+  private persistenceFailure<T>(): ToolResult<T> {
+    return {
+      ok: false,
+      error: {
+        code: 'PERSISTENCE_FAILED',
+        message:
+          'The change was not applied because browser storage could not be updated.',
+      },
+      nextAction: 'Enable site storage or free browser storage, then retry.',
+    }
   }
 
   private activity(
@@ -269,12 +564,17 @@ export class CoordinationStore {
       })
       .map((resource) => {
         const compatibilityIssues: string[] = []
+        const fullyCoversNeed = need
+          ? resource.capacity >= need.quantity
+          : null
         if (need) {
           if (resource.type !== need.category) {
             compatibilityIssues.push('category')
           }
           if (resource.unit !== need.unit) compatibilityIssues.push('unit')
-          if (resource.capacity < need.quantity) compatibilityIssues.push('capacity')
+          if (!fullyCoversNeed && !splittableUnits.has(need.unit)) {
+            compatibilityIssues.push('capacity')
+          }
           if (resource.availability.status === 'unavailable') {
             compatibilityIssues.push('unavailable')
           }
@@ -301,6 +601,13 @@ export class CoordinationStore {
         return {
           ...resource,
           compatibleWithNeed: need ? compatibilityIssues.length === 0 : null,
+          canContribute: need ? compatibilityIssues.length === 0 : null,
+          fullyCoversNeed: need
+            ? compatibilityIssues.length === 0 && fullyCoversNeed
+            : null,
+          contributionCapacity: need
+            ? Math.min(resource.capacity, need.quantity)
+            : null,
           compatibilityIssues,
         }
       })
@@ -328,7 +635,7 @@ export class CoordinationStore {
   getStagedPlanDetails() {
     const plan = this.state.stagedPlan
     if (!plan) return null
-    const validation = validateMatchPlan(this.state, plan.assignments)
+    const validation = validateStagedPlan(this.state, plan)
     return {
       plan,
       digest: plan.digest,
@@ -353,7 +660,33 @@ export class CoordinationStore {
     assignments: AssignmentInput[],
     intent: string,
     actor: ActivityActor = 'agent',
+    signal?: AbortSignal,
   ): Promise<ToolResult<StagedPlan>> {
+    if (signal?.aborted) {
+      return this.failure(
+        actor,
+        'stage_match_plan',
+        'Cancelled plan staging before it started',
+        {
+          code: 'STAGE_CANCELLED',
+          message: 'Plan staging was cancelled before any proposal changed.',
+        },
+      )
+    }
+    const normalizedIntent =
+      intent.trim() || 'Coordinate selected community needs'
+    if (!isBoundedSerializedString(normalizedIntent, MAX_PLAN_INTENT_LENGTH)) {
+      return this.failure(
+        actor,
+        'stage_match_plan',
+        'Rejected a plan with an invalid intent',
+        {
+          code: 'INVALID_INTENT',
+          message: `Plan intent must be at most ${MAX_PLAN_INTENT_LENGTH} characters.`,
+        },
+        'Shorten the plan intent and retry.',
+      )
+    }
     const stageRequest = ++this.stageRequestSequence
     const sourceRevision = this.state.resourceRevision
     const normalized = normalizeAssignments(assignments)
@@ -378,6 +711,17 @@ export class CoordinationStore {
     }
 
     const digest = await this.createDigest(sourceRevision, normalized)
+    if (signal?.aborted) {
+      return this.failure(
+        actor,
+        'stage_match_plan',
+        'Cancelled plan staging during digest verification',
+        {
+          code: 'STAGE_CANCELLED',
+          message: 'Plan staging was cancelled before any proposal changed.',
+        },
+      )
+    }
     if (stageRequest !== this.stageRequestSequence) {
       this.recordActivity(
         actor,
@@ -415,15 +759,16 @@ export class CoordinationStore {
     const plan: StagedPlan = {
       id: `CM-${digest.slice(7, 13).toUpperCase()}`,
       digest,
-      intent: intent.trim() || 'Coordinate selected community needs',
+      intent: normalizedIntent,
       assignments: normalized,
       sourceRevision,
       createdAt: this.now(),
+      proposedBy: actor === 'human' ? 'human' : 'agent',
       status: 'staged',
       approval: null,
     }
 
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       stagedPlan: plan,
       activity: this.activity(
@@ -434,6 +779,7 @@ export class CoordinationStore {
         `${validation.coverage.needsFullyCovered}/${validation.coverage.needsTotal} needs projected covered · ${validation.summary.assignmentCount} ${validation.summary.assignmentCount === 1 ? 'assignment' : 'assignments'} · ${validation.summary.totalTravelKm} km`,
       ),
     })
+    if (!persisted) return this.persistenceFailure<StagedPlan>()
 
     return {
       ok: true,
@@ -509,7 +855,7 @@ export class CoordinationStore {
         approvedBy: 'human-ui',
       },
     }
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       stagedPlan: approved,
       activity: this.activity(
@@ -520,6 +866,7 @@ export class CoordinationStore {
         `${digest.slice(0, 22)}…`,
       ),
     })
+    if (!persisted) return this.persistenceFailure<StagedPlan>()
     return {
       ok: true,
       data: approved,
@@ -565,7 +912,7 @@ export class CoordinationStore {
       )
     }
 
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       stagedPlan: null,
       activity: this.activity(
@@ -576,6 +923,12 @@ export class CoordinationStore {
         `${digest.slice(0, 22)}… · no assignments changed`,
       ),
     })
+    if (!persisted) {
+      return this.persistenceFailure<{
+        rejectedPlanId: string
+        rejectedDigest: string
+      }>()
+    }
     return {
       ok: true,
       data: {
@@ -586,7 +939,21 @@ export class CoordinationStore {
     }
   }
 
-  commitApprovedPlan(digest: string): ToolResult<StagedPlan> {
+  async commitApprovedPlan(
+    digest: string,
+    signal?: AbortSignal,
+  ): Promise<ToolResult<StagedPlan>> {
+    if (signal?.aborted) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        'Commit cancelled before verification started',
+        {
+          code: 'COMMIT_CANCELLED',
+          message: 'Commit was cancelled before any assignment changed.',
+        },
+      )
+    }
     const stagedPlan = this.state.stagedPlan
     if (!stagedPlan) {
       return this.failure(
@@ -659,9 +1026,68 @@ export class CoordinationStore {
       )
     }
 
+    const recomputedDigest = await this.createDigest(
+      stagedPlan.sourceRevision,
+      stagedPlan.assignments,
+    )
+    if (signal?.aborted) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit cancelled for ${stagedPlan.id}`,
+        {
+          code: 'COMMIT_CANCELLED',
+          message: 'Commit was cancelled before any assignment changed.',
+        },
+      )
+    }
+    if (recomputedDigest !== digest) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for altered plan ${stagedPlan.id}`,
+        {
+          code: 'PLAN_TAMPERED',
+          message:
+            'The staged assignments no longer match the human-approved digest.',
+        },
+        'Inspect the staged plan and stage a fresh exact proposal.',
+      )
+    }
+
+    const approvedPlan = this.state.stagedPlan
+    if (approvedPlan?.status === 'committed') {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked for ${approvedPlan.id}`,
+        {
+          code: 'PLAN_ALREADY_COMMITTED',
+          message: `${approvedPlan.id} has already been committed.`,
+        },
+      )
+    }
+    if (
+      !approvedPlan ||
+      approvedPlan.digest !== digest ||
+      approvedPlan.approval?.digest !== digest ||
+      approvedPlan.sourceRevision !== this.state.resourceRevision
+    ) {
+      return this.failure(
+        'agent',
+        'commit_approved_plan',
+        `Commit blocked because ${stagedPlan.id} changed during verification`,
+        {
+          code: 'STALE_PLAN',
+          message: 'The approved plan changed while its digest was being verified.',
+        },
+        'Inspect the latest workspace and request approval again if needed.',
+      )
+    }
+
     const validation = validateMatchPlan(
       this.state,
-      stagedPlan.assignments,
+      approvedPlan.assignments,
     )
     if (!validation.valid) {
       return this.failure(
@@ -682,25 +1108,25 @@ export class CoordinationStore {
       this.state.committedAssignments,
     )
     const replacedNeedIds = new Set(
-      stagedPlan.assignments.map((assignment) => assignment.needId),
+      approvedPlan.assignments.map((assignment) => assignment.needId),
     )
     const preserved = this.state.committedAssignments.filter(
       (assignment) => !replacedNeedIds.has(assignment.needId),
     )
-    const committed = stagedPlan.assignments.map((assignment) => ({
+    const committed = approvedPlan.assignments.map((assignment) => ({
       ...assignment,
-      planId: stagedPlan.id,
+      planId: approvedPlan.id,
       committedAt,
     }))
-    const completedPlan: StagedPlan = { ...stagedPlan, status: 'committed' }
+    const completedPlan: StagedPlan = { ...approvedPlan, status: 'committed' }
 
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       resourceRevision: this.state.resourceRevision + 1,
       committedAssignments: [...preserved, ...committed],
       stagedPlan: completedPlan,
       lastCommit: {
-        planId: stagedPlan.id,
+        planId: approvedPlan.id,
         digest,
         previousAssignments,
         createdAt: committedAt,
@@ -709,10 +1135,11 @@ export class CoordinationStore {
         this.state,
         'agent',
         'commit_approved_plan',
-        `Committed approved plan ${stagedPlan.id}`,
+        `Committed approved plan ${approvedPlan.id}`,
         `${committed.length} ${committed.length === 1 ? 'assignment' : 'assignments'} · human-approved digest consumed`,
       ),
     })
+    if (!persisted) return this.persistenceFailure<StagedPlan>()
 
     return {
       ok: true,
@@ -776,7 +1203,7 @@ export class CoordinationStore {
             approval: null,
           }
         : this.state.stagedPlan
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       resourceRevision: this.state.resourceRevision + 1,
       resources,
@@ -791,6 +1218,7 @@ export class CoordinationStore {
           : `The resource can be considered by future plans.${invalidatedApproval ? ' Earlier plan approval was cleared.' : ''}`,
       ),
     })
+    if (!persisted) return this.persistenceFailure<Resource>()
 
     return {
       ok: true,
@@ -815,7 +1243,7 @@ export class CoordinationStore {
       )
     }
 
-    this.publish({
+    const persisted = this.publish({
       ...this.state,
       resourceRevision: this.state.resourceRevision + 1,
       committedAssignments: structuredClone(frame.previousAssignments),
@@ -829,6 +1257,9 @@ export class CoordinationStore {
         'The exact pre-commit assignment state was restored.',
       ),
     })
+    if (!persisted) {
+      return this.persistenceFailure<{ undonePlanId: string }>()
+    }
     return {
       ok: true,
       data: { undonePlanId: frame.planId },
@@ -846,7 +1277,7 @@ export class CoordinationStore {
       'Restored the deterministic Riverlight scenario',
       'All approvals, assignments, and availability changes were cleared.',
     )
-    this.publish(reset)
+    return { persisted: this.publish(reset) }
   }
 }
 
