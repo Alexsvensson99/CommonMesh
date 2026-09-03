@@ -7,13 +7,12 @@ CommonMesh
 > [`docs/DEVPOST_SUBMISSION.md`](docs/DEVPOST_SUBMISSION.md) is supporting
 > judging evidence, not a second field-value source.
 >
-> **Status:** The Devpost project page is populated, but the WebMCP Challenge
-> entry has not been submitted. The independently validated 2:50 demo is public
-> at [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk), with HD processing
-> complete and a manual English caption track published. Adding the URL to the
-> live Devpost project, the four personal-answer confirmations, final
-> repository/CI/deployment correlation, and an explicit **yes, submit** remain
-> open gates.
+> **Status:** Submitted to the WebMCP Challenge and verified live on 2026-09-03.
+> Devpost submission `1167827` is available at
+> [devpost.com/software/commonmesh](https://devpost.com/software/commonmesh).
+> The independently validated 2:50 demo is public at
+> [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk), with HD processing
+> complete and a manual English caption track published.
 
 ## One-line Summary
 
@@ -193,10 +192,10 @@ copy and timestamp refinements.
 - [x] Upload the approved candidate, wait for HD processing, and verify an
   unauthenticated `OK` player response with `isUnlisted: false`.
 - [x] Replace every pending-video marker in the repository with the exact verified public URL.
-- [ ] Add the public video URL to the live Devpost project and confirm Devpost reads it back.
-- [ ] Confirm the four personal/subjective form answers below.
-- [ ] Run lint, typecheck, tests, production build, and dependency audit on the exact final worktree; commit, push, verify CI, and correlate the deployed assets.
-- [ ] Obtain a final explicit **yes, submit** immediately before the Devpost submission call.
+- [x] Add the public video URL to the live Devpost project and confirm Devpost reads it back.
+- [x] Confirm and submit the four personal/subjective form answers below.
+- [x] Run lint, typecheck, tests, production build, and dependency audit on the exact final worktree; commit, push, verify CI, and correlate the deployed assets.
+- [x] Obtain a final explicit **yes, submit**, submit the entry, and verify Devpost's `submitted_at` value.
 
 ## Known Limitations
 
@@ -209,25 +208,24 @@ copy and timestamp refinements.
 
 ## Canonical Official Form Fields
 
-The live form was queried on 2026-09-03. All technical text answers and the
-public video URL are ready. The four personal/subjective values still require
-project-owner confirmation. Final submission remains a separate explicit
-action.
+The live form was queried and submitted on 2026-09-03. Devpost accepted every
+required answer; live project readback confirmed the public video URL and the
+challenge submission timestamp.
 
 | ID | Official field | Prepared answer | Status |
 | --- | --- | --- | --- |
-| 28249 | Submitter Type | `Individual` | Confirm with project owner |
-| 28250 | Country(s) | `Sweden` | Confirm with project owner |
+| 28249 | Submitter Type | `Individual` | Submitted |
+| 28250 | Country(s) | `Sweden` | Submitted |
 | 28251 | Organization name | Leave blank | Optional |
-| 28252 | App Status | `New` | Ready |
+| 28252 | App Status | `New` | Submitted |
 | 28253 | Existing project explanation | Leave blank | Not applicable |
-| 28254 | Live URL | `https://commonmesh.itsjustmeal3x.chatgpt.site` | Ready |
-| 28255 | Testing instructions | Use the Testing Instructions section above | Ready |
-| 28256 | Public repository | `https://github.com/Alexsvensson99/CommonMesh` | Ready |
-| 28257 | Agents/clients tested | `OpenAI Codex using ChatGPT's in-app browser` | Ready |
-| 28258 | AI tools used | `OpenAI Codex` | Ready |
-| 28259 | Learning | `Significant` | Confirm with project owner |
-| 28260 | AI career value | `Yes` | Confirm with project owner |
-| — | Video URL | `https://youtu.be/7Oy3g2_-LRk` | Ready; add to Devpost and read back |
+| 28254 | Live URL | `https://commonmesh.itsjustmeal3x.chatgpt.site` | Submitted |
+| 28255 | Testing instructions | Use the Testing Instructions section above | Submitted |
+| 28256 | Public repository | `https://github.com/Alexsvensson99/CommonMesh` | Submitted |
+| 28257 | Agents/clients tested | `OpenAI Codex using ChatGPT's in-app browser` | Submitted |
+| 28258 | AI tools used | `OpenAI Codex` and `ElevenLabs Eric v2` | Submitted |
+| 28259 | Learning | `Significant` | Submitted |
+| 28260 | AI career value | `Yes` | Submitted |
+| — | Video URL | `https://youtu.be/7Oy3g2_-LRk` | Submitted and read back |
 
 No official field currently asks for a Codex session ID. Add it here only if the live form changes and explicitly requests one.

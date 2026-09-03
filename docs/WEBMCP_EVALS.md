@@ -71,4 +71,5 @@ Video evidence verification:
 - [x] upload, complete HD processing, publish manual English captions, and
   verify unauthenticated public availability; and
 - [x] insert the exact verified URL throughout the repository documentation.
-- [ ] add the URL to the live Devpost project and read it back before submission.
+- [x] add the URL to the live Devpost project, submit the entry, and verify the
+  challenge submission timestamp by live readback.

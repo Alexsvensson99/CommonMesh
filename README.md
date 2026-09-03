@@ -7,7 +7,8 @@ CommonMesh turns complex community coordination into a transparent, human-approv
 [![CI](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml/badge.svg)](https://github.com/Alexsvensson99/CommonMesh/actions/workflows/ci.yml)
 
 **[Open the public CommonMesh demo](https://commonmesh.itsjustmeal3x.chatgpt.site)** ·
-**[Watch the 2:50 WebMCP Challenge demo](https://youtu.be/7Oy3g2_-LRk)**
+**[Watch the 2:50 WebMCP Challenge demo](https://youtu.be/7Oy3g2_-LRk)** ·
+**[View the Devpost submission](https://devpost.com/software/commonmesh)**
 
 Use ChatGPT's in-app browser or a WebMCP-compatible Chrome build for live
 agent tools. Other modern browsers can inspect the dashboard and use the

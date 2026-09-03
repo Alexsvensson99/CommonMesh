@@ -117,14 +117,15 @@ Distinctive and appropriately ambitious for the challenge while remaining demons
 - The repository is paired with a verified public demo, a live WebMCP catalogue,
   repair evidence, a documented end-to-end transport run, and a public
   170-second hybrid demo independently verified on its exact hash.
-- Submission readiness still depends on adding the video URL to the live
-  Devpost project, confirming the personal form answers, rerunning the final
-  repository gate, and receiving a separate explicit **yes, submit**.
+- Devpost submission `1167827` was verified live on 2026-09-03 with the public
+  demo, repository, and video URLs attached.
 - The repeatable tool-flow checks and evidence boundaries are documented in [`WEBMCP_EVALS.md`](WEBMCP_EVALS.md).
 
 Public demo: [commonmesh.itsjustmeal3x.chatgpt.site](https://commonmesh.itsjustmeal3x.chatgpt.site)
 
 Demo video: [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk)
+
+Devpost: [devpost.com/software/commonmesh](https://devpost.com/software/commonmesh)
 
 ## Primary references
 

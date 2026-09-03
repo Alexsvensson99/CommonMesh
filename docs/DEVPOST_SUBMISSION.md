@@ -5,13 +5,13 @@
 > longer narrative supplies judging context and repository evidence; it is not
 > a second source of submission-field values.
 >
-> **Current status:** The Devpost project page is populated, but the WebMCP
-> Challenge entry has not been submitted. The technically and independently
-> validated 2:50 demo is public at
+> **Current status:** Submitted to the WebMCP Challenge and verified live on
+> 2026-09-03 at
+> [devpost.com/software/commonmesh](https://devpost.com/software/commonmesh).
+> The technically and independently validated 2:50 demo is public at
 > [youtu.be/7Oy3g2_-LRk](https://youtu.be/7Oy3g2_-LRk), with HD processing
-> complete and manual English captions published. Adding the URL to Devpost,
-> four personal-answer confirmations, final CI/deployment correlation, and an
-> explicit **yes, submit** remain open gates.
+> complete and manual English captions published. Devpost readback confirmed
+> the video URL and challenge submission timestamp.
 
 ## Title
 
@@ -249,16 +249,17 @@ entry.
 - [x] **Upload the approved video, complete HD processing, publish the manual English captions, and verify public availability.**
 - [x] Verify the full public transport flow: discovery, validation, staging, blocked commit, approval, commit, failure, selective repair, second commit, activity, and persisted reset.
 - [x] Prepare factual answers for the live form's agent/client and AI-tool questions.
-- [ ] **Run the complete final quality gate, commit and push, verify CI, and correlate the final deployed assets.**
-- [ ] **Copy only fields actually requested by the live form; leave no pending markers in the final entry.**
+- [x] **Run the complete final quality gate, commit and push, verify CI, and correlate the final deployed assets.**
+- [x] **Copy only fields actually requested by the live form; leave no pending markers in the final entry.**
 
-## Remaining official form and publication gates
+## Verified official form and publication state
 
-The live Devpost form was queried on 2026-09-03. Technical answers are prepared in the root [`devpost-submission.md`](../devpost-submission.md); the following gates remain:
+The live Devpost form was queried and submitted on 2026-09-03. Devpost
+readback confirmed:
 
-- **Public video field:** add `https://youtu.be/7Oy3g2_-LRk` to the live Devpost project and read it back before submission.
-- **Submitter Type:** confirm `Individual`.
-- **Country(s):** confirm `Sweden`.
-- **Learning:** confirm `Significant`.
-- **AI career value:** confirm `Yes`.
-- **Final action:** obtain an explicit **yes, submit** immediately before submitting the entry.
+- **Public video field:** `https://youtu.be/7Oy3g2_-LRk`.
+- **Submitter Type:** `Individual`.
+- **Country(s):** `Sweden`.
+- **Learning:** `Significant`.
+- **AI career value:** `Yes`.
+- **Submission:** ID `1167827`, live at [devpost.com/software/commonmesh](https://devpost.com/software/commonmesh).
